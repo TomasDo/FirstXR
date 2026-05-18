@@ -5,7 +5,7 @@ PlayerSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 26
   productGUID: 99e56bb157ad54039b43195bac8bf73b
-  AndroidProfiler: 0
+  AndroidProfiler: 1
   AndroidFilterTouchesWhenObscured: 0
   AndroidEnableSustainedPerformanceMode: 0
   defaultScreenOrientation: 0
@@ -143,10 +143,11 @@ PlayerSettings:
   tvOSBundleVersion: 1.0
   bundleVersion: 0.1
   preloadedAssets:
-  - {fileID: 3206984280741736201, guid: 72f37429c7d594ee093bed560e0c1645, type: 2}
-  - {fileID: 11400000, guid: b0e989cbd5d1c4445a74d23b484be6fa, type: 2}
-  - {fileID: 11400000, guid: 1f071f0f7ea014b979631c97bd00a2be, type: 2}
   - {fileID: 3910156379520179146, guid: 7ccf26bd761e542eaa6c46c3b4afad96, type: 2}
+  - {fileID: 11400000, guid: 0570dbd7fea204772a8388b52c34780c, type: 2}
+  - {fileID: 11400000, guid: 1f071f0f7ea014b979631c97bd00a2be, type: 2}
+  - {fileID: 11400000, guid: b0e989cbd5d1c4445a74d23b484be6fa, type: 2}
+  - {fileID: 3206984280741736201, guid: 72f37429c7d594ee093bed560e0c1645, type: 2}
   metroInputSource: 0
   wsaTransparentSwapchain: 0
   m_HolographicPauseOnTrackingLoss: 1
@@ -179,7 +180,7 @@ PlayerSettings:
   AndroidTargetSdkVersion: 0
   AndroidPreferredInstallLocation: 1
   aotOptions: 
-  stripEngineCode: 1
+  stripEngineCode: 0
   iPhoneStrippingLevel: 0
   iPhoneScriptCallOptimization: 0
   ForceInternetPermission: 0
@@ -752,9 +753,11 @@ PlayerSettings:
   platformArchitecture: {}
   scriptingBackend:
     Android: 1
-  il2cppCompilerConfiguration: {}
+  il2cppCompilerConfiguration:
+    Android: 2
   il2cppCodeGeneration: {}
   managedStrippingLevel:
+    Android: 1
     EmbeddedLinux: 1
     GameCoreScarlett: 1
     GameCoreXboxOne: 1
@@ -769,7 +772,8 @@ PlayerSettings:
     XboxOne: 1
     iPhone: 1
     tvOS: 1
-  incrementalIl2cppBuild: {}
+  incrementalIl2cppBuild:
+    Android: 1
   suppressCommonWarnings: 1
   allowUnsafeCode: 0
   useDeterministicCompilation: 1
