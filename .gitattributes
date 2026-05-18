@@ -1,0 +1,32 @@
+# Unity YAML — merge=unity for smarter merges (optional; requires unity-yaml-merge)
+*.unity linguist-generated
+*.prefab linguist-generated
+*.asset linguist-generated
+*.meta linguist-generated
+
+# Normalize line endings
+* text=auto
+*.cs text diff=csharp
+*.shader text
+*.cginc text
+*.hlsl text
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.psd binary
+*.exr binary
+*.tga binary
+*.tif binary
+*.tiff binary
+*.wav binary
+*.mp3 binary
+*.ogg binary
+*.fbx binary
+*.dll binary
+*.so binary
+*.aar binary
+*.bin binary
+*.bytes binary
