@@ -10,6 +10,15 @@ namespace Unity.XR.XREAL.Samples
     public class HelloMR : MonoBehaviour
     {
         [SerializeField]
+        bool m_ShowBeamProInputToggle = true;
+
+        [SerializeField]
+        bool m_DefaultToHandInput = true;
+
+        [SerializeField]
+        GameObject[] m_HandVisualizers;
+
+        [SerializeField]
         TMP_Text m_TextCurrentMode;
         [SerializeField]
         Toggle m_Toggle0Dof;
@@ -22,10 +31,13 @@ namespace Unity.XR.XREAL.Samples
         [SerializeField]
         Button m_ButtonHandInput;
 
+        void Awake()
+        {
+            EnsureHandVisualizerReferences();
+        }
+
         private void Start()
         {
-            m_TextCurrentMode.text = $"Current Mode: {XREALPlugin.GetTrackingType()}";
-
             XREALPlugin.OnTrackingTypeChanged += OnTrackingTypeChanged;
             m_Toggle0Dof.onValueChanged.AddListener(On0DofToggleChanged);
             m_Toggle0DofStable.onValueChanged.AddListener(On0DofStableToggleChanged);
@@ -33,7 +45,54 @@ namespace Unity.XR.XREAL.Samples
             m_Toggle6Dof.onValueChanged.AddListener(On6DofToggleChanged);
 
             InitDofUI();
+            ApplyDefaultInputOnStart();
+            RefreshStatusText();
             m_ButtonHandInput.interactable = XREALPlugin.IsHMDFeatureSupported(XREALSupportedFeature.XREAL_FEATURE_PERCEPTION_HEAD_TRACKING_POSITION);
+        }
+
+        void EnsureHandVisualizerReferences()
+        {
+            if (m_HandVisualizers != null && m_HandVisualizers.Length > 0)
+                return;
+
+            var left = GameObject.Find("Left Hand Tracking");
+            var right = GameObject.Find("Right Hand Tracking");
+            if (left != null && right != null)
+                m_HandVisualizers = new[] { left, right };
+        }
+
+        void ApplyDefaultInputOnStart()
+        {
+            if (m_DefaultToHandInput)
+                ChangeToHandInput();
+            else
+                ApplyInputVisuals(XREALPlugin.GetInputSource());
+        }
+
+        void RefreshStatusText()
+        {
+            if (m_TextCurrentMode == null)
+                return;
+
+            m_TextCurrentMode.text = $"Track: {XREALPlugin.GetTrackingType()}, Input: {XREALPlugin.GetInputSource()}";
+        }
+
+        static bool IsHandInput(InputSource source)
+        {
+            return source == InputSource.Hands || source == InputSource.ControllerAndHands;
+        }
+
+        void ApplyInputVisuals(InputSource source)
+        {
+            bool showHands = IsHandInput(source);
+            if (m_HandVisualizers != null)
+            {
+                foreach (var handRoot in m_HandVisualizers)
+                {
+                    if (handRoot != null)
+                        handRoot.SetActive(showHands);
+                }
+            }
         }
 
         private void OnDestroy()
@@ -102,6 +161,8 @@ namespace Unity.XR.XREAL.Samples
         public void ChangeToControllerInput()
         {
             XREALPlugin.SetInputSource(InputSource.Controller);
+            ApplyInputVisuals(InputSource.Controller);
+            RefreshStatusText();
         }
 
         /// <summary>
@@ -110,6 +171,30 @@ namespace Unity.XR.XREAL.Samples
         public void ChangeToHandInput()
         {
             XREALPlugin.SetInputSource(InputSource.Hands);
+            ApplyInputVisuals(InputSource.Hands);
+            RefreshStatusText();
+        }
+
+        void OnGUI()
+        {
+            if (!m_ShowBeamProInputToggle || Application.platform != RuntimePlatform.Android)
+                return;
+
+            const float width = 280f;
+            const float height = 90f;
+            Rect buttonRect = new Rect(Screen.width - width - 30f, 30f, width, height);
+
+            var currentSource = XREALPlugin.GetInputSource();
+            bool isHand = IsHandInput(currentSource);
+            string label = isHand ? "Switch to Controller" : "Switch to Hand";
+
+            if (GUI.Button(buttonRect, label))
+            {
+                if (isHand)
+                    ChangeToControllerInput();
+                else
+                    ChangeToHandInput();
+            }
         }
 
         /// <summary>
@@ -123,8 +208,7 @@ namespace Unity.XR.XREAL.Samples
 
         private void OnTrackingTypeChanged(bool result, TrackingType targetTrackingType)
         {
-            var currentTrackingType = XREALPlugin.GetTrackingType();
-            m_TextCurrentMode.text = $"Current Mode: {currentTrackingType}";
+            RefreshStatusText();
         }
     }
 }
