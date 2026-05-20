@@ -3495,6 +3495,16 @@ MonoBehaviour:
   m_CubeSize: 0.3
   m_AxisLength: 0.5
   m_AxisWidth: 0.005
+  m_AutoRotate: 1
+  m_RotationDegreesPerSecond: 45
+  m_RotationDegreesPerAxis: 360
+  m_DrawFacePatterns: 1
+  m_PatternTextureSize: 128
+  m_SpawnCheckPlane: 1
+  m_CheckPlaneFileName: check_plane.STL
+  m_CheckPlaneRightGapMeters: 0.2
+  m_CheckPlaneSizeMeters: 0.3
+  m_CheckPlaneColor: {r: 0.8, g: 0.9, b: 1, a: 1}
 --- !u!1 &2074687942
 GameObject:
   m_ObjectHideFlags: 0

@@ -24,6 +24,8 @@ namespace Unity.XR.XREAL.Samples
         [SerializeField]
         bool m_GlassesControlWindowVisible = true;
 
+        CanvasGroup m_GlassesControlCanvasGroup;
+
         [SerializeField]
         TMP_Text m_TextCurrentMode;
         [SerializeField]
@@ -81,8 +83,18 @@ namespace Unity.XR.XREAL.Samples
 
         void ApplyGlassesControlWindowVisibility()
         {
-            if (m_GlassesControlWindow != null)
-                m_GlassesControlWindow.SetActive(m_GlassesControlWindowVisible);
+            if (m_GlassesControlWindow == null)
+                return;
+
+            if (m_GlassesControlCanvasGroup == null)
+                m_GlassesControlCanvasGroup = m_GlassesControlWindow.GetComponent<CanvasGroup>();
+
+            if (m_GlassesControlCanvasGroup == null)
+                m_GlassesControlCanvasGroup = m_GlassesControlWindow.AddComponent<CanvasGroup>();
+
+            m_GlassesControlCanvasGroup.alpha = m_GlassesControlWindowVisible ? 1f : 0f;
+            m_GlassesControlCanvasGroup.interactable = m_GlassesControlWindowVisible;
+            m_GlassesControlCanvasGroup.blocksRaycasts = m_GlassesControlWindowVisible;
         }
 
         public void ToggleGlassesControlWindow()

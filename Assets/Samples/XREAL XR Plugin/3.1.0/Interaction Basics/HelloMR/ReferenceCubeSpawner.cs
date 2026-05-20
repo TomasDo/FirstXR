@@ -1,5 +1,9 @@
 using System.Collections;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Text;
 using UnityEngine;
+using UnityEngine.Networking;
 using UnityEngine.Rendering;
 
 namespace Unity.XR.XREAL.Samples
@@ -20,6 +24,36 @@ namespace Unity.XR.XREAL.Samples
 
         [SerializeField]
         float m_AxisWidth = 0.005f;
+
+        [SerializeField]
+        bool m_AutoRotate = true;
+
+        [SerializeField]
+        float m_RotationDegreesPerSecond = 45f;
+
+        [SerializeField]
+        float m_RotationDegreesPerAxis = 360f;
+
+        [SerializeField]
+        bool m_DrawFacePatterns = true;
+
+        [SerializeField]
+        int m_PatternTextureSize = 128;
+
+        [SerializeField]
+        bool m_SpawnCheckPlane = true;
+
+        [SerializeField]
+        string m_CheckPlaneFileName = "check_plane.STL";
+
+        [SerializeField]
+        float m_CheckPlaneRightGapMeters = 0.2f;
+
+        [SerializeField]
+        float m_CheckPlaneSizeMeters = 0.3f;
+
+        [SerializeField]
+        Color m_CheckPlaneColor = new Color(0.8f, 0.9f, 1f, 1f);
 
         void Start()
         {
@@ -54,9 +88,18 @@ namespace Unity.XR.XREAL.Samples
             root.transform.SetPositionAndRotation(position, Quaternion.identity);
 
             var cubeTransform = CreateCube(root.transform);
+            if (m_DrawFacePatterns)
+                CreateFacePatterns(cubeTransform);
+
             CreateAxis(cubeTransform, Vector3.right, Color.red, "X-Axis", m_AxisLength, m_AxisWidth);
             CreateAxis(cubeTransform, Vector3.up, Color.green, "Y-Axis", m_AxisLength, m_AxisWidth);
             CreateAxis(cubeTransform, Vector3.forward, Color.blue, "Z-Axis", m_AxisLength, m_AxisWidth);
+
+            if (m_AutoRotate)
+                StartCoroutine(RotateAroundLocalAxes(cubeTransform));
+
+            if (m_SpawnCheckPlane)
+                StartCoroutine(SpawnCheckPlaneModel(root.transform, camera.transform.right));
         }
 
         Transform CreateCube(Transform parent)
@@ -77,6 +120,335 @@ namespace Unity.XR.XREAL.Samples
             return cube.transform;
         }
 
+        IEnumerator SpawnCheckPlaneModel(Transform parent, Vector3 rightDirection)
+        {
+            byte[] stlBytes = null;
+            yield return LoadStreamingAssetBytes(m_CheckPlaneFileName, loadedBytes => stlBytes = loadedBytes);
+            if (stlBytes == null || stlBytes.Length == 0)
+                yield break;
+
+            if (!TryCreateStlMesh(stlBytes, out var mesh))
+            {
+                Debug.LogWarning($"ReferenceCubeSpawner: Could not parse STL model {m_CheckPlaneFileName}.");
+                yield break;
+            }
+
+            var maxDimension = Mathf.Max(mesh.bounds.size.x, mesh.bounds.size.y, mesh.bounds.size.z);
+            var modelScale = maxDimension > 0f ? m_CheckPlaneSizeMeters / maxDimension : 1f;
+
+            var modelRoot = new GameObject("Check Plane");
+            modelRoot.transform.SetParent(parent, false);
+            var rightOffset = m_CubeSize * 0.5f + m_CheckPlaneRightGapMeters + m_CheckPlaneSizeMeters * 0.5f;
+            modelRoot.transform.position = parent.position + rightDirection.normalized * rightOffset;
+            modelRoot.transform.localRotation = Quaternion.identity;
+            modelRoot.transform.localScale = Vector3.one * modelScale;
+
+            var meshFilter = modelRoot.AddComponent<MeshFilter>();
+            meshFilter.sharedMesh = mesh;
+
+            var meshRenderer = modelRoot.AddComponent<MeshRenderer>();
+            meshRenderer.material = CreateCheckPlaneMaterial();
+            meshRenderer.shadowCastingMode = ShadowCastingMode.On;
+            meshRenderer.receiveShadows = true;
+
+            if (m_AutoRotate)
+                StartCoroutine(RotateAroundLocalAxes(modelRoot.transform));
+        }
+
+        IEnumerator LoadStreamingAssetBytes(string fileName, System.Action<byte[]> onLoaded)
+        {
+            var assetPath = $"{Application.streamingAssetsPath}/{fileName}";
+            using (var request = UnityWebRequest.Get(assetPath))
+            {
+                yield return request.SendWebRequest();
+
+                if (request.result != UnityWebRequest.Result.Success)
+                {
+                    Debug.LogWarning($"ReferenceCubeSpawner: Failed to load {assetPath}: {request.error}");
+                    yield break;
+                }
+
+                onLoaded?.Invoke(request.downloadHandler.data);
+            }
+        }
+
+        Material CreateCheckPlaneMaterial()
+        {
+            var material = new Material(Shader.Find("Standard"));
+            material.color = m_CheckPlaneColor;
+            return material;
+        }
+
+        static bool TryCreateStlMesh(byte[] data, out Mesh mesh)
+        {
+            return TryCreateBinaryStlMesh(data, out mesh) || TryCreateAsciiStlMesh(data, out mesh);
+        }
+
+        static bool TryCreateBinaryStlMesh(byte[] data, out Mesh mesh)
+        {
+            mesh = null;
+            if (data == null || data.Length < 84)
+                return false;
+
+            var rawTriangleCount = System.BitConverter.ToUInt32(data, 80);
+            if (rawTriangleCount > int.MaxValue)
+                return false;
+
+            var triangleCount = (int)rawTriangleCount;
+            var expectedLength = 84L + triangleCount * 50L;
+            if (expectedLength != data.Length || triangleCount == 0)
+                return false;
+
+            var vertices = new List<Vector3>((int)triangleCount * 3);
+            var normals = new List<Vector3>((int)triangleCount * 3);
+            var triangles = new List<int>((int)triangleCount * 3);
+            var offset = 84;
+
+            for (var i = 0; i < triangleCount; i++)
+            {
+                var normal = ReadVector3(data, offset);
+                offset += 12;
+
+                for (var vertexIndex = 0; vertexIndex < 3; vertexIndex++)
+                {
+                    vertices.Add(ReadVector3(data, offset));
+                    normals.Add(normal);
+                    triangles.Add(vertices.Count - 1);
+                    offset += 12;
+                }
+
+                offset += 2;
+            }
+
+            mesh = BuildMesh("check_plane.STL", vertices, triangles, normals);
+            return true;
+        }
+
+        static bool TryCreateAsciiStlMesh(byte[] data, out Mesh mesh)
+        {
+            mesh = null;
+            if (data == null || data.Length == 0)
+                return false;
+
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            var text = Encoding.ASCII.GetString(data);
+            var lines = text.Split('\n');
+
+            foreach (var rawLine in lines)
+            {
+                var line = rawLine.Trim();
+                if (!line.StartsWith("vertex "))
+                    continue;
+
+                var parts = line.Split((char[])null, System.StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length != 4)
+                    continue;
+
+                if (!float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var x) ||
+                    !float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var y) ||
+                    !float.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var z))
+                    continue;
+
+                vertices.Add(new Vector3(x, y, z));
+                triangles.Add(vertices.Count - 1);
+            }
+
+            if (vertices.Count < 3 || vertices.Count % 3 != 0)
+                return false;
+
+            mesh = BuildMesh("check_plane.STL", vertices, triangles, null);
+            return true;
+        }
+
+        static Vector3 ReadVector3(byte[] data, int offset)
+        {
+            return new Vector3(
+                System.BitConverter.ToSingle(data, offset),
+                System.BitConverter.ToSingle(data, offset + 4),
+                System.BitConverter.ToSingle(data, offset + 8));
+        }
+
+        static Mesh BuildMesh(string meshName, List<Vector3> vertices, List<int> triangles, List<Vector3> normals)
+        {
+            var mesh = new Mesh { name = meshName };
+            if (vertices.Count > 65535)
+                mesh.indexFormat = IndexFormat.UInt32;
+
+            mesh.SetVertices(vertices);
+            mesh.SetTriangles(triangles, 0);
+
+            if (normals != null && normals.Count == vertices.Count)
+                mesh.SetNormals(normals);
+            else
+                mesh.RecalculateNormals();
+
+            mesh.RecalculateBounds();
+            CenterMesh(mesh);
+            return mesh;
+        }
+
+        static void CenterMesh(Mesh mesh)
+        {
+            var bounds = mesh.bounds;
+            var center = bounds.center;
+            var vertices = mesh.vertices;
+
+            for (var i = 0; i < vertices.Length; i++)
+                vertices[i] -= center;
+
+            mesh.vertices = vertices;
+            mesh.RecalculateBounds();
+        }
+
+        void CreateFacePatterns(Transform cubeTransform)
+        {
+            CreatePatternFace(cubeTransform, Vector3.forward, Vector3.up, "Front Pattern", 11);
+            CreatePatternFace(cubeTransform, Vector3.back, Vector3.up, "Back Pattern", 23);
+            CreatePatternFace(cubeTransform, Vector3.right, Vector3.up, "Right Pattern", 37);
+            CreatePatternFace(cubeTransform, Vector3.left, Vector3.up, "Left Pattern", 41);
+            CreatePatternFace(cubeTransform, Vector3.up, Vector3.back, "Top Pattern", 53);
+            CreatePatternFace(cubeTransform, Vector3.down, Vector3.forward, "Bottom Pattern", 67);
+        }
+
+        void CreatePatternFace(Transform parent, Vector3 normal, Vector3 up, string faceName, int seed)
+        {
+            var face = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            face.name = faceName;
+            face.transform.SetParent(parent, false);
+            face.transform.localPosition = normal.normalized * 0.501f;
+            face.transform.localRotation = Quaternion.LookRotation(normal, up);
+            face.transform.localScale = Vector3.one * 0.96f;
+
+            var collider = face.GetComponent<Collider>();
+            if (collider != null)
+                Destroy(collider);
+
+            var renderer = face.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                renderer.material = CreatePatternMaterial(seed);
+                renderer.shadowCastingMode = ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+            }
+        }
+
+        Material CreatePatternMaterial(int seed)
+        {
+            var texture = CreatePatternTexture(seed);
+            var shader = Shader.Find("Unlit/Transparent");
+            if (shader == null)
+                shader = Shader.Find("Sprites/Default");
+
+            var material = new Material(shader);
+            material.mainTexture = texture;
+            material.color = Color.white;
+            return material;
+        }
+
+        Texture2D CreatePatternTexture(int seed)
+        {
+            var size = Mathf.Max(32, m_PatternTextureSize);
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            texture.wrapMode = TextureWrapMode.Clamp;
+            texture.filterMode = FilterMode.Bilinear;
+
+            var pixels = new Color32[size * size];
+            var clear = new Color32(0, 0, 0, 0);
+            for (var i = 0; i < pixels.Length; i++)
+                pixels[i] = clear;
+
+            var random = new System.Random(seed);
+            var palette = new[]
+            {
+                new Color32(255, 80, 80, 210),
+                new Color32(80, 255, 120, 210),
+                new Color32(80, 140, 255, 210),
+                new Color32(255, 230, 80, 210),
+                new Color32(255, 80, 220, 210),
+                new Color32(40, 40, 40, 230),
+            };
+
+            for (var i = 0; i < 8; i++)
+            {
+                var centerX = random.Next(size / 8, size * 7 / 8);
+                var centerY = random.Next(size / 8, size * 7 / 8);
+                var radiusX = random.Next(size / 18, size / 7);
+                var radiusY = random.Next(size / 18, size / 7);
+                DrawIrregularBlob(pixels, size, centerX, centerY, radiusX, radiusY, palette[random.Next(palette.Length)], random);
+            }
+
+            for (var i = 0; i < 7; i++)
+            {
+                var start = new Vector2Int(random.Next(size), random.Next(size));
+                var end = new Vector2Int(random.Next(size), random.Next(size));
+                var width = random.Next(2, 6);
+                DrawLine(pixels, size, start, end, palette[random.Next(palette.Length)], width);
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply();
+            return texture;
+        }
+
+        static void DrawIrregularBlob(Color32[] pixels, int size, int centerX, int centerY, int radiusX, int radiusY, Color32 color, System.Random random)
+        {
+            var wobbleX = random.Next(-radiusX / 2, radiusX / 2 + 1);
+            var wobbleY = random.Next(-radiusY / 2, radiusY / 2 + 1);
+            var minX = Mathf.Clamp(centerX - radiusX + wobbleX, 0, size - 1);
+            var maxX = Mathf.Clamp(centerX + radiusX + wobbleX, 0, size - 1);
+            var minY = Mathf.Clamp(centerY - radiusY + wobbleY, 0, size - 1);
+            var maxY = Mathf.Clamp(centerY + radiusY + wobbleY, 0, size - 1);
+
+            for (var y = minY; y <= maxY; y++)
+            {
+                for (var x = minX; x <= maxX; x++)
+                {
+                    var normalizedX = (x - centerX) / (float)Mathf.Max(1, radiusX);
+                    var normalizedY = (y - centerY) / (float)Mathf.Max(1, radiusY);
+                    var edgeNoise = 0.75f + Mathf.PerlinNoise((x + random.Next(100)) * 0.08f, (y + random.Next(100)) * 0.08f) * 0.55f;
+                    if ((normalizedX * normalizedX + normalizedY * normalizedY) < edgeNoise)
+                        pixels[y * size + x] = color;
+                }
+            }
+        }
+
+        static void DrawLine(Color32[] pixels, int size, Vector2Int start, Vector2Int end, Color32 color, int width)
+        {
+            var delta = end - start;
+            var steps = Mathf.Max(Mathf.Abs(delta.x), Mathf.Abs(delta.y));
+            if (steps == 0)
+                return;
+
+            for (var i = 0; i <= steps; i++)
+            {
+                var t = i / (float)steps;
+                var x = Mathf.RoundToInt(Mathf.Lerp(start.x, end.x, t));
+                var y = Mathf.RoundToInt(Mathf.Lerp(start.y, end.y, t));
+                DrawDisc(pixels, size, x, y, width, color);
+            }
+        }
+
+        static void DrawDisc(Color32[] pixels, int size, int centerX, int centerY, int radius, Color32 color)
+        {
+            var minX = Mathf.Clamp(centerX - radius, 0, size - 1);
+            var maxX = Mathf.Clamp(centerX + radius, 0, size - 1);
+            var minY = Mathf.Clamp(centerY - radius, 0, size - 1);
+            var maxY = Mathf.Clamp(centerY + radius, 0, size - 1);
+            var radiusSquared = radius * radius;
+
+            for (var y = minY; y <= maxY; y++)
+            {
+                for (var x = minX; x <= maxX; x++)
+                {
+                    var dx = x - centerX;
+                    var dy = y - centerY;
+                    if (dx * dx + dy * dy <= radiusSquared)
+                        pixels[y * size + x] = color;
+                }
+            }
+        }
+
         static void CreateAxis(Transform parent, Vector3 direction, Color color, string axisName, float axisLength, float axisWidth)
         {
             var axisObject = new GameObject(axisName);
@@ -94,6 +466,28 @@ namespace Unity.XR.XREAL.Samples
             line.material = new Material(Shader.Find("Sprites/Default"));
             line.shadowCastingMode = ShadowCastingMode.Off;
             line.receiveShadows = false;
+        }
+
+        IEnumerator RotateAroundLocalAxes(Transform target)
+        {
+            var axes = new[] { Vector3.right, Vector3.up, Vector3.forward };
+            var axisIndex = 0;
+
+            while (target != null)
+            {
+                var remainingDegrees = m_RotationDegreesPerAxis;
+                var axis = axes[axisIndex];
+
+                while (target != null && remainingDegrees > 0f)
+                {
+                    var step = Mathf.Min(m_RotationDegreesPerSecond * Time.deltaTime, remainingDegrees);
+                    target.Rotate(axis, step, Space.Self);
+                    remainingDegrees -= step;
+                    yield return null;
+                }
+
+                axisIndex = (axisIndex + 1) % axes.Length;
+            }
         }
     }
 }
