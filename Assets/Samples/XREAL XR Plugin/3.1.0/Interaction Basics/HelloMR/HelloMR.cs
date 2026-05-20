@@ -19,6 +19,12 @@ namespace Unity.XR.XREAL.Samples
         GameObject[] m_HandVisualizers;
 
         [SerializeField]
+        GameObject m_GlassesControlWindow;
+
+        [SerializeField]
+        bool m_GlassesControlWindowVisible = true;
+
+        [SerializeField]
         TMP_Text m_TextCurrentMode;
         [SerializeField]
         Toggle m_Toggle0Dof;
@@ -34,6 +40,7 @@ namespace Unity.XR.XREAL.Samples
         void Awake()
         {
             EnsureHandVisualizerReferences();
+            EnsureGlassesControlWindowReference();
         }
 
         private void Start()
@@ -46,6 +53,7 @@ namespace Unity.XR.XREAL.Samples
 
             InitDofUI();
             ApplyDefaultInputOnStart();
+            ApplyGlassesControlWindowVisibility();
             RefreshStatusText();
             m_ButtonHandInput.interactable = XREALPlugin.IsHMDFeatureSupported(XREALSupportedFeature.XREAL_FEATURE_PERCEPTION_HEAD_TRACKING_POSITION);
         }
@@ -59,6 +67,28 @@ namespace Unity.XR.XREAL.Samples
             var right = GameObject.Find("Right Hand Tracking");
             if (left != null && right != null)
                 m_HandVisualizers = new[] { left, right };
+        }
+
+        void EnsureGlassesControlWindowReference()
+        {
+            if (m_GlassesControlWindow != null)
+                return;
+
+            var canvas = GameObject.Find("Canvas");
+            if (canvas != null)
+                m_GlassesControlWindow = canvas;
+        }
+
+        void ApplyGlassesControlWindowVisibility()
+        {
+            if (m_GlassesControlWindow != null)
+                m_GlassesControlWindow.SetActive(m_GlassesControlWindowVisible);
+        }
+
+        public void ToggleGlassesControlWindow()
+        {
+            m_GlassesControlWindowVisible = !m_GlassesControlWindowVisible;
+            ApplyGlassesControlWindowVisibility();
         }
 
         void ApplyDefaultInputOnStart()
@@ -182,19 +212,27 @@ namespace Unity.XR.XREAL.Samples
 
             const float width = 280f;
             const float height = 90f;
-            Rect buttonRect = new Rect(Screen.width - width - 30f, 30f, width, height);
+            const float margin = 30f;
+            const float spacing = 12f;
+            var x = Screen.width - width - margin;
+            var y = margin;
 
             var currentSource = XREALPlugin.GetInputSource();
             bool isHand = IsHandInput(currentSource);
-            string label = isHand ? "Switch to Controller" : "Switch to Hand";
+            string inputLabel = isHand ? "Switch to Controller" : "Switch to Hand";
 
-            if (GUI.Button(buttonRect, label))
+            if (GUI.Button(new Rect(x, y, width, height), inputLabel))
             {
                 if (isHand)
                     ChangeToControllerInput();
                 else
                     ChangeToHandInput();
             }
+
+            y += height + spacing;
+            string uiLabel = m_GlassesControlWindowVisible ? "Hide Glasses UI" : "Show Glasses UI";
+            if (GUI.Button(new Rect(x, y, width, height), uiLabel))
+                ToggleGlassesControlWindow();
         }
 
         /// <summary>
