@@ -13,6 +13,8 @@ namespace Unity.XR.XREAL.Samples
     /// </summary>
     public class ReferenceCubeSpawner : MonoBehaviour
     {
+        public static ReferenceCubeSpawner Instance { get; private set; }
+
         [SerializeField]
         float m_DistanceMeters = 2f;
 
@@ -55,9 +57,26 @@ namespace Unity.XR.XREAL.Samples
         [SerializeField]
         Color m_CheckPlaneColor = new Color(0.8f, 0.9f, 1f, 1f);
 
+        [SerializeField]
+        float m_MoveStepMeters = 0.05f;
+
+        Transform m_CubeRoot;
+        Transform m_CheckPlaneRoot;
+
+        void Awake()
+        {
+            Instance = this;
+        }
+
         void Start()
         {
             StartCoroutine(SpawnWhenCameraReady());
+        }
+
+        void OnDestroy()
+        {
+            if (Instance == this)
+                Instance = null;
         }
 
         IEnumerator SpawnWhenCameraReady()
@@ -87,19 +106,33 @@ namespace Unity.XR.XREAL.Samples
             var position = camera.transform.position + camera.transform.forward * m_DistanceMeters;
             root.transform.SetPositionAndRotation(position, Quaternion.identity);
 
-            var cubeTransform = CreateCube(root.transform);
+            m_CubeRoot = CreateCube(root.transform);
             if (m_DrawFacePatterns)
-                CreateFacePatterns(cubeTransform);
+                CreateFacePatterns(m_CubeRoot);
 
-            CreateAxis(cubeTransform, Vector3.right, Color.red, "X-Axis", m_AxisLength, m_AxisWidth);
-            CreateAxis(cubeTransform, Vector3.up, Color.green, "Y-Axis", m_AxisLength, m_AxisWidth);
-            CreateAxis(cubeTransform, Vector3.forward, Color.blue, "Z-Axis", m_AxisLength, m_AxisWidth);
+            CreateAxis(m_CubeRoot, Vector3.right, Color.red, "X-Axis", m_AxisLength, m_AxisWidth);
+            CreateAxis(m_CubeRoot, Vector3.up, Color.green, "Y-Axis", m_AxisLength, m_AxisWidth);
+            CreateAxis(m_CubeRoot, Vector3.forward, Color.blue, "Z-Axis", m_AxisLength, m_AxisWidth);
 
             if (m_AutoRotate)
-                StartCoroutine(RotateAroundLocalAxes(cubeTransform));
+                StartCoroutine(RotateAroundLocalAxes(m_CubeRoot));
 
             if (m_SpawnCheckPlane)
                 StartCoroutine(SpawnCheckPlaneModel(root.transform, camera.transform.right));
+        }
+
+        public void MoveTargetsByDirection(Vector3 worldDirection)
+        {
+            if (worldDirection == Vector3.zero)
+                return;
+
+            var delta = worldDirection.normalized * m_MoveStepMeters;
+
+            if (m_CubeRoot != null)
+                m_CubeRoot.position += delta;
+
+            if (m_CheckPlaneRoot != null)
+                m_CheckPlaneRoot.position += delta;
         }
 
         Transform CreateCube(Transform parent)
@@ -142,6 +175,7 @@ namespace Unity.XR.XREAL.Samples
             modelRoot.transform.position = parent.position + rightDirection.normalized * rightOffset;
             modelRoot.transform.localRotation = Quaternion.identity;
             modelRoot.transform.localScale = Vector3.one * modelScale;
+            m_CheckPlaneRoot = modelRoot.transform;
 
             var meshFilter = modelRoot.AddComponent<MeshFilter>();
             meshFilter.sharedMesh = mesh;

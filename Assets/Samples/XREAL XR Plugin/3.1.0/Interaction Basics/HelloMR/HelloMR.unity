@@ -3384,6 +3384,7 @@ GameObject:
   - component: {fileID: 1942998015}
   - component: {fileID: 1942998019}
   - component: {fileID: 1942998020}
+  - component: {fileID: 1942998021}
   m_Layer: 5
   m_Name: Panel
   m_TagString: Untagged
@@ -3505,6 +3506,26 @@ MonoBehaviour:
   m_CheckPlaneRightGapMeters: 0.2
   m_CheckPlaneSizeMeters: 0.3
   m_CheckPlaneColor: {r: 0.8, g: 0.9, b: 1, a: 1}
+--- !u!114 &1942998021
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1942998012}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b2e4c91a8d643f0b6e5d4c3a2918076, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_DistanceMeters: 1.5
+  m_VerticalOffsetMeters: 0.35
+  m_HorizontalOffsetMeters: -0.55
+  m_WidthMeters: 0.42
+  m_AspectRatio: 1.7777778
+  m_StartCaptureOnAwake: 1
+  m_YuvMaterialTemplate: {fileID: 2100000, guid: bbd448ddc4cd0cb42a5f809e967a4477, type: 2}
+  m_SwapUVChannels: 0
 --- !u!1 &2074687942
 GameObject:
   m_ObjectHideFlags: 0

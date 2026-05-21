@@ -24,7 +24,11 @@ namespace Unity.XR.XREAL.Samples
         [SerializeField]
         bool m_GlassesControlWindowVisible = true;
 
+        [SerializeField]
+        bool m_ShowBeamProObjectMoveButtons = true;
+
         CanvasGroup m_GlassesControlCanvasGroup;
+        ReferenceCubeSpawner m_ReferenceCubeSpawner;
 
         [SerializeField]
         TMP_Text m_TextCurrentMode;
@@ -43,6 +47,7 @@ namespace Unity.XR.XREAL.Samples
         {
             EnsureHandVisualizerReferences();
             EnsureGlassesControlWindowReference();
+            EnsureReferenceCubeSpawnerReference();
         }
 
         private void Start()
@@ -79,6 +84,12 @@ namespace Unity.XR.XREAL.Samples
             var canvas = GameObject.Find("Canvas");
             if (canvas != null)
                 m_GlassesControlWindow = canvas;
+        }
+
+        void EnsureReferenceCubeSpawnerReference()
+        {
+            if (m_ReferenceCubeSpawner == null)
+                m_ReferenceCubeSpawner = FindObjectOfType<ReferenceCubeSpawner>();
         }
 
         void ApplyGlassesControlWindowVisibility()
@@ -245,6 +256,39 @@ namespace Unity.XR.XREAL.Samples
             string uiLabel = m_GlassesControlWindowVisible ? "Hide Glasses UI" : "Show Glasses UI";
             if (GUI.Button(new Rect(x, y, width, height), uiLabel))
                 ToggleGlassesControlWindow();
+
+            if (!m_ShowBeamProObjectMoveButtons)
+                return;
+
+            y += height + spacing;
+            DrawMoveButtons(x, y, width, height);
+        }
+
+        void DrawMoveButtons(float x, float y, float width, float height)
+        {
+            EnsureReferenceCubeSpawnerReference();
+            if (m_ReferenceCubeSpawner == null)
+                return;
+
+            var buttonWidth = (width - 12f) * 0.5f;
+            var rowSpacing = 8f;
+
+            if (GUI.Button(new Rect(x, y, buttonWidth, height), "Move X+"))
+                m_ReferenceCubeSpawner.MoveTargetsByDirection(Vector3.right);
+            if (GUI.Button(new Rect(x + buttonWidth + 12f, y, buttonWidth, height), "Move X-"))
+                m_ReferenceCubeSpawner.MoveTargetsByDirection(Vector3.left);
+
+            y += height + rowSpacing;
+            if (GUI.Button(new Rect(x, y, buttonWidth, height), "Move Y+"))
+                m_ReferenceCubeSpawner.MoveTargetsByDirection(Vector3.up);
+            if (GUI.Button(new Rect(x + buttonWidth + 12f, y, buttonWidth, height), "Move Y-"))
+                m_ReferenceCubeSpawner.MoveTargetsByDirection(Vector3.down);
+
+            y += height + rowSpacing;
+            if (GUI.Button(new Rect(x, y, buttonWidth, height), "Move Z+"))
+                m_ReferenceCubeSpawner.MoveTargetsByDirection(Vector3.forward);
+            if (GUI.Button(new Rect(x + buttonWidth + 12f, y, buttonWidth, height), "Move Z-"))
+                m_ReferenceCubeSpawner.MoveTargetsByDirection(Vector3.back);
         }
 
         /// <summary>
