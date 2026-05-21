@@ -3492,6 +3492,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c4e8f1a23b5d4e89a7c6b2d1e0f9a8b7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_SpawnReferenceCube: 0
   m_DistanceMeters: 2
   m_CubeSize: 0.3
   m_AxisLength: 0.5
@@ -3518,7 +3519,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7b2e4c91a8d643f0b6e5d4c3a2918076, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_DistanceMeters: 2.5
+  m_DistanceMeters: 2
   m_VerticalOffsetMeters: 0.35
   m_HorizontalOffsetMeters: -0.55
   m_WidthMeters: 1.26

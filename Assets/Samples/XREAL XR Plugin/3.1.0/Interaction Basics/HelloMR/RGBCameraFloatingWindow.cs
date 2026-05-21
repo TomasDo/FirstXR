@@ -13,7 +13,7 @@ namespace Unity.XR.XREAL.Samples
         const string AndroidCameraPermission = "android.permission.CAMERA";
 
         [SerializeField]
-        float m_DistanceMeters = 2.5f;
+        float m_DistanceMeters = 2f;
 
         [SerializeField]
         float m_VerticalOffsetMeters = 0.35f;
