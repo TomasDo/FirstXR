@@ -3473,7 +3473,7 @@ MonoBehaviour:
   m_DefaultToHandInput: 1
   m_HandVisualizers: []
   m_GlassesControlWindow: {fileID: 1279313422}
-  m_GlassesControlWindowVisible: 1
+  m_GlassesControlWindowVisible: 0
   m_TextCurrentMode: {fileID: 1058488636}
   m_Toggle0Dof: {fileID: 2074687948}
   m_Toggle0DofStable: {fileID: 1936478573}
@@ -3518,14 +3518,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7b2e4c91a8d643f0b6e5d4c3a2918076, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_DistanceMeters: 1.5
+  m_DistanceMeters: 2.5
   m_VerticalOffsetMeters: 0.35
   m_HorizontalOffsetMeters: -0.55
-  m_WidthMeters: 0.42
+  m_WidthMeters: 1.26
   m_AspectRatio: 1.7777778
   m_StartCaptureOnAwake: 1
   m_YuvMaterialTemplate: {fileID: 2100000, guid: bbd448ddc4cd0cb42a5f809e967a4477, type: 2}
-  m_SwapUVChannels: 0
 --- !u!1 &2074687942
 GameObject:
   m_ObjectHideFlags: 0

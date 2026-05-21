@@ -22,7 +22,7 @@ namespace Unity.XR.XREAL.Samples
         GameObject m_GlassesControlWindow;
 
         [SerializeField]
-        bool m_GlassesControlWindowVisible = true;
+        bool m_GlassesControlWindowVisible = false;
 
         [SerializeField]
         bool m_ShowBeamProObjectMoveButtons = true;
