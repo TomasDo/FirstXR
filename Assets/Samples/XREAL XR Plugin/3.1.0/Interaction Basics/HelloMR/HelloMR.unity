@@ -3385,6 +3385,7 @@ GameObject:
   - component: {fileID: 1942998019}
   - component: {fileID: 1942998020}
   - component: {fileID: 1942998021}
+  - component: {fileID: 1942998022}
   m_Layer: 5
   m_Name: Panel
   m_TagString: Untagged
@@ -3526,6 +3527,24 @@ MonoBehaviour:
   m_AspectRatio: 1.7777778
   m_StartCaptureOnAwake: 1
   m_YuvMaterialTemplate: {fileID: 2100000, guid: bbd448ddc4cd0cb42a5f809e967a4477, type: 2}
+--- !u!114 &1942998022
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1942998012}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8e7d6c5b4a3928170695e4d3c2b1a0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_ShowOnBeamPro: 1
+  m_LeftEyeIndex: 0
+  m_ScreenMargin: 16
+  m_MaxScreenHeightFraction: 0.45
+  m_TopReservedFraction: 0.32
+  m_FallbackToMainCameraRender: 1
 --- !u!1 &2074687942
 GameObject:
   m_ObjectHideFlags: 0
