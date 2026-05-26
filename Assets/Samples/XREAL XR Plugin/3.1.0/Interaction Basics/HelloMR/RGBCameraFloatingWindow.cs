@@ -37,10 +37,31 @@ namespace Unity.XR.XREAL.Samples
         bool m_ShowDebugOnBeamPro = true;
 
         [SerializeField]
-        int m_MaxDebugLines = 10;
+        int m_MaxDebugLines = 200;
 
         [SerializeField]
         float m_WaitForEyePlugTimeoutSeconds = 45f;
+
+        [SerializeField]
+        float m_DebugPanelWidth = 920f;
+
+        [SerializeField]
+        float m_DebugPanelHeight = 520f;
+
+        [SerializeField]
+        bool m_AutoScrollLogsToBottom = true;
+
+        const float k_DebugPanelHeaderHeight = 48f;
+        const float k_DebugPanelMargin = 24f;
+        const float k_DebugPanelPadding = 12f;
+
+        Vector2 m_DebugPanelPosition = new Vector2(k_DebugPanelMargin, k_DebugPanelMargin);
+        Vector2 m_DebugScrollPosition;
+        Vector2 m_DebugDragPointerOffset;
+        bool m_DebugPanelDragging;
+        bool m_ScrollLogsToBottomNextFrame;
+        GUIStyle m_DebugLogStyle;
+        GUIStyle m_DebugHeaderStyle;
 
         XREALRGBCameraTexture m_RGBCameraTexture;
         Material m_PreviewMaterial;
@@ -429,6 +450,8 @@ namespace Unity.XR.XREAL.Samples
             while (m_DebugLines.Count > Mathf.Max(1, m_MaxDebugLines))
                 m_DebugLines.RemoveAt(0);
 
+            m_ScrollLogsToBottomNextFrame = m_AutoScrollLogsToBottom;
+
             var unityLog = $"RGBCameraFloatingWindow: {message}";
             if (warning)
                 Debug.LogWarning(unityLog);
@@ -441,26 +464,101 @@ namespace Unity.XR.XREAL.Samples
             if (!m_ShowDebugOnBeamPro || Application.platform != RuntimePlatform.Android)
                 return;
 
-            var fontSize = Mathf.Max(14, Screen.height / 64);
-            var width = Mathf.Min(Screen.width - 32f, 920f);
-            var lineHeight = fontSize * 1.25f;
-            var height = Mathf.Min(Screen.height - 32f, lineHeight * (m_MaxDebugLines + 5));
-            var rect = new Rect(24f, 24f, width, height);
-            var text = BuildDebugText();
+            EnsureDebugGuiStyles();
+            var panelRect = GetDebugPanelRect();
+            HandleDebugPanelDrag(panelRect);
 
             var previousColor = GUI.color;
-            GUI.color = new Color(0f, 0f, 0f, 0.78f);
-            GUI.Box(rect, GUIContent.none);
+            GUI.color = new Color(0f, 0f, 0f, 0.82f);
+            GUI.Box(panelRect, GUIContent.none);
             GUI.color = previousColor;
 
-            var style = new GUIStyle(GUI.skin.label)
+            var headerRect = new Rect(panelRect.x, panelRect.y, panelRect.width, k_DebugPanelHeaderHeight);
+            GUI.Label(headerRect, "  RGB Debug Log (drag header)", m_DebugHeaderStyle);
+
+            var text = BuildDebugText();
+            var scrollViewRect = new Rect(
+                panelRect.x + k_DebugPanelPadding,
+                panelRect.y + k_DebugPanelHeaderHeight,
+                panelRect.width - k_DebugPanelPadding * 2f,
+                panelRect.height - k_DebugPanelHeaderHeight - k_DebugPanelPadding);
+
+            var innerWidth = scrollViewRect.width - 24f;
+            var contentHeight = m_DebugLogStyle.CalcHeight(new GUIContent(text), innerWidth);
+            contentHeight = Mathf.Max(contentHeight, scrollViewRect.height);
+            var contentRect = new Rect(0f, 0f, innerWidth, contentHeight);
+
+            if (m_ScrollLogsToBottomNextFrame)
+            {
+                m_DebugScrollPosition.y = Mathf.Max(0f, contentHeight - scrollViewRect.height);
+                m_ScrollLogsToBottomNextFrame = false;
+            }
+
+            m_DebugScrollPosition = GUI.BeginScrollView(scrollViewRect, m_DebugScrollPosition, contentRect);
+            GUI.Label(new Rect(0f, 0f, innerWidth, contentHeight), text, m_DebugLogStyle);
+            GUI.EndScrollView();
+        }
+
+        void EnsureDebugGuiStyles()
+        {
+            var fontSize = Mathf.Max(14, Screen.height / 64);
+            if (m_DebugLogStyle != null && m_DebugLogStyle.fontSize == fontSize)
+                return;
+
+            m_DebugLogStyle = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.UpperLeft,
                 fontSize = fontSize,
                 normal = { textColor = Color.white },
-                wordWrap = true
+                wordWrap = true,
+                richText = false,
+                clipping = TextClipping.Overflow
             };
-            GUI.Label(new Rect(rect.x + 14f, rect.y + 12f, rect.width - 28f, rect.height - 24f), text, style);
+
+            m_DebugHeaderStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                fontSize = fontSize,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = new Color(0.75f, 0.9f, 1f) }
+            };
+        }
+
+        Rect GetDebugPanelRect()
+        {
+            var width = Mathf.Clamp(m_DebugPanelWidth, 320f, Screen.width - k_DebugPanelMargin * 2f);
+            var height = Mathf.Clamp(m_DebugPanelHeight, 200f, Screen.height - k_DebugPanelMargin * 2f);
+            m_DebugPanelPosition.x = Mathf.Clamp(m_DebugPanelPosition.x, k_DebugPanelMargin, Screen.width - width - k_DebugPanelMargin);
+            m_DebugPanelPosition.y = Mathf.Clamp(m_DebugPanelPosition.y, k_DebugPanelMargin, Screen.height - height - k_DebugPanelMargin);
+            return new Rect(m_DebugPanelPosition.x, m_DebugPanelPosition.y, width, height);
+        }
+
+        void HandleDebugPanelDrag(Rect panelRect)
+        {
+            var headerRect = new Rect(panelRect.x, panelRect.y, panelRect.width, k_DebugPanelHeaderHeight);
+            var e = Event.current;
+
+            switch (e.type)
+            {
+                case EventType.MouseDown:
+                    if (!headerRect.Contains(e.mousePosition))
+                        break;
+                    m_DebugPanelDragging = true;
+                    m_DebugDragPointerOffset = e.mousePosition - m_DebugPanelPosition;
+                    e.Use();
+                    break;
+
+                case EventType.MouseDrag:
+                    if (!m_DebugPanelDragging)
+                        break;
+                    m_DebugPanelPosition = e.mousePosition - m_DebugDragPointerOffset;
+                    e.Use();
+                    break;
+
+                case EventType.MouseUp:
+                    m_DebugPanelDragging = false;
+                    break;
+            }
         }
 
         string BuildDebugText()

@@ -3471,7 +3471,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_ShowBeamProInputToggle: 1
-  m_DefaultToHandInput: 1
+  m_DefaultToHandInput: 0
+  m_EnableHandTrackingVisualizationOnStart: 1
   m_HandVisualizers: []
   m_GlassesControlWindow: {fileID: 1279313422}
   m_GlassesControlWindowVisible: 0

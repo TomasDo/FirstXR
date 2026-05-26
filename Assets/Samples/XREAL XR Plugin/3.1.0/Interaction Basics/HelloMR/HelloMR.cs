@@ -13,10 +13,21 @@ namespace Unity.XR.XREAL.Samples
         bool m_ShowBeamProInputToggle = true;
 
         [SerializeField]
-        bool m_DefaultToHandInput = true;
+        bool m_DefaultToHandInput = false;
+
+        [SerializeField]
+        bool m_EnableHandTrackingVisualizationOnStart = true;
 
         [SerializeField]
         GameObject[] m_HandVisualizers;
+
+        static readonly string[] s_HandInteractorObjectNames =
+        {
+            "Poke Interactor",
+            "Direct Interactor",
+            "Near-Far Interactor",
+            "Ray Interactor",
+        };
 
         [SerializeField]
         GameObject m_GlassesControlWindow;
@@ -118,8 +129,10 @@ namespace Unity.XR.XREAL.Samples
         {
             if (m_DefaultToHandInput)
                 ChangeToHandInput();
+            else if (m_EnableHandTrackingVisualizationOnStart)
+                ApplyControllerWithHandVisualizationOnly();
             else
-                ApplyInputVisuals(XREALPlugin.GetInputSource());
+                ChangeToControllerInput();
         }
 
         void RefreshStatusText()
@@ -127,25 +140,69 @@ namespace Unity.XR.XREAL.Samples
             if (m_TextCurrentMode == null)
                 return;
 
-            m_TextCurrentMode.text = $"Track: {XREALPlugin.GetTrackingType()}, Input: {XREALPlugin.GetInputSource()}";
+            var inputLabel = FormatInputSourceLabel(XREALPlugin.GetInputSource());
+            m_TextCurrentMode.text = $"Track: {XREALPlugin.GetTrackingType()}, Input: {inputLabel}";
         }
 
-        static bool IsHandInput(InputSource source)
+        static string FormatInputSourceLabel(InputSource source)
         {
-            return source == InputSource.Hands || source == InputSource.ControllerAndHands;
+            if (source == InputSource.ControllerAndHands)
+                return "Controller (hand tracking display only)";
+
+            return source.ToString();
         }
 
-        void ApplyInputVisuals(InputSource source)
+        static bool IsHandControlInput(InputSource source)
         {
-            bool showHands = IsHandInput(source);
-            if (m_HandVisualizers != null)
+            return source == InputSource.Hands;
+        }
+
+        void SetHandVisualizersActive(bool active)
+        {
+            EnsureHandVisualizerReferences();
+            if (m_HandVisualizers == null)
+                return;
+
+            foreach (var handRoot in m_HandVisualizers)
             {
-                foreach (var handRoot in m_HandVisualizers)
+                if (handRoot != null)
+                    handRoot.SetActive(active);
+            }
+        }
+
+        void SetHandInteractorsEnabled(bool enabled)
+        {
+            foreach (var handObjectName in new[] { "Left Hand", "Right Hand" })
+            {
+                var handRoot = GameObject.Find(handObjectName);
+                if (handRoot == null)
+                    continue;
+
+                foreach (var interactorTransform in handRoot.GetComponentsInChildren<Transform>(true))
                 {
-                    if (handRoot != null)
-                        handRoot.SetActive(showHands);
+                    if (System.Array.IndexOf(s_HandInteractorObjectNames, interactorTransform.name) < 0)
+                        continue;
+
+                    interactorTransform.gameObject.SetActive(enabled);
                 }
             }
+        }
+
+        void SyncPluginInputSource(InputSource source)
+        {
+            XREALPlugin.SetInputSource(source);
+            XREALInput.SetInputSource(source);
+        }
+
+        /// <summary>
+        /// Controller drives interaction; hand tracking runs for visualization only.
+        /// </summary>
+        void ApplyControllerWithHandVisualizationOnly()
+        {
+            SyncPluginInputSource(InputSource.ControllerAndHands);
+            SetHandVisualizersActive(true);
+            SetHandInteractorsEnabled(false);
+            RefreshStatusText();
         }
 
         private void OnDestroy()
@@ -213,9 +270,15 @@ namespace Unity.XR.XREAL.Samples
         /// </summary>
         public void ChangeToControllerInput()
         {
-            XREALPlugin.SetInputSource(InputSource.Controller);
-            ApplyInputVisuals(InputSource.Controller);
-            RefreshStatusText();
+            if (m_EnableHandTrackingVisualizationOnStart)
+                ApplyControllerWithHandVisualizationOnly();
+            else
+            {
+                SyncPluginInputSource(InputSource.Controller);
+                SetHandVisualizersActive(false);
+                SetHandInteractorsEnabled(false);
+                RefreshStatusText();
+            }
         }
 
         /// <summary>
@@ -223,8 +286,9 @@ namespace Unity.XR.XREAL.Samples
         /// </summary>
         public void ChangeToHandInput()
         {
-            XREALPlugin.SetInputSource(InputSource.Hands);
-            ApplyInputVisuals(InputSource.Hands);
+            SyncPluginInputSource(InputSource.Hands);
+            SetHandVisualizersActive(true);
+            SetHandInteractorsEnabled(true);
             RefreshStatusText();
         }
 
@@ -241,12 +305,12 @@ namespace Unity.XR.XREAL.Samples
             var y = margin;
 
             var currentSource = XREALPlugin.GetInputSource();
-            bool isHand = IsHandInput(currentSource);
-            string inputLabel = isHand ? "Switch to Controller" : "Switch to Hand";
+            bool isHandControl = IsHandControlInput(currentSource);
+            string inputLabel = isHandControl ? "Switch to Controller" : "Switch to Hand";
 
             if (GUI.Button(new Rect(x, y, width, height), inputLabel))
             {
-                if (isHand)
+                if (isHandControl)
                     ChangeToControllerInput();
                 else
                     ChangeToHandInput();
