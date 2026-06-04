@@ -1,0 +1,129 @@
+{
+  "version": 1,
+  "language": "zh",
+  "modelFolderName": "vosk-model-small-cn-0.22",
+  "minConfidence": 0.55,
+  "cooldownSeconds": 1.2,
+  "commands": [
+    {
+      "id": "hand_mode",
+      "displayName": "手势模式",
+      "phrases": ["手势模式", "切换手势", "用手势"],
+      "action": "ChangeToHandInput"
+    },
+    {
+      "id": "controller_mode",
+      "displayName": "控制器模式",
+      "phrases": ["控制器模式", "切换控制器", "用手柄"],
+      "action": "ChangeToControllerInput"
+    },
+    {
+      "id": "controller_hands_display",
+      "displayName": "控制器加手部显示",
+      "phrases": ["显示手部", "控制器加手势", "手部显示"],
+      "action": "ApplyControllerWithHandVisualizationOnly"
+    },
+    {
+      "id": "show_glasses_ui",
+      "displayName": "显示眼镜界面",
+      "phrases": ["显示界面", "打开界面", "显示眼镜"],
+      "action": "ShowGlassesControlWindow"
+    },
+    {
+      "id": "hide_glasses_ui",
+      "displayName": "隐藏眼镜界面",
+      "phrases": ["隐藏界面", "关闭界面", "隐藏眼镜"],
+      "action": "HideGlassesControlWindow"
+    },
+    {
+      "id": "toggle_glasses_ui",
+      "displayName": "切换眼镜界面",
+      "phrases": ["切换界面", "开关界面"],
+      "action": "ToggleGlassesControlWindow"
+    },
+    {
+      "id": "move_x_plus",
+      "displayName": "向右移动",
+      "phrases": ["向右", "右移", "x加", "X加"],
+      "action": "MoveXPlus"
+    },
+    {
+      "id": "move_x_minus",
+      "displayName": "向左移动",
+      "phrases": ["向左", "左移", "x减", "X减"],
+      "action": "MoveXMinus"
+    },
+    {
+      "id": "move_y_plus",
+      "displayName": "向上移动",
+      "phrases": ["向上", "上移", "y加", "Y加"],
+      "action": "MoveYPlus"
+    },
+    {
+      "id": "move_y_minus",
+      "displayName": "向下移动",
+      "phrases": ["向下", "下移", "y减", "Y减"],
+      "action": "MoveYMinus"
+    },
+    {
+      "id": "move_z_plus",
+      "displayName": "向前移动",
+      "phrases": ["向前", "前移", "z加", "Z加"],
+      "action": "MoveZPlus"
+    },
+    {
+      "id": "move_z_minus",
+      "displayName": "向后移动",
+      "phrases": ["向后", "后移", "z减", "Z减"],
+      "action": "MoveZMinus"
+    },
+    {
+      "id": "vibrate",
+      "displayName": "控制器震动",
+      "phrases": ["震动", "震动测试", "振动"],
+      "action": "Vibrate"
+    },
+    {
+      "id": "tracking_6dof",
+      "displayName": "六自由度追踪",
+      "phrases": ["六自由度", "六维追踪", "六维"],
+      "action": "SetTracking6Dof"
+    },
+    {
+      "id": "tracking_3dof",
+      "displayName": "三自由度追踪",
+      "phrases": ["三自由度", "三维追踪", "三维"],
+      "action": "SetTracking3Dof"
+    },
+    {
+      "id": "tracking_0dof",
+      "displayName": "零自由度追踪",
+      "phrases": ["零自由度", "零维"],
+      "action": "SetTracking0Dof"
+    },
+    {
+      "id": "tracking_0dof_stable",
+      "displayName": "稳定零自由度",
+      "phrases": ["稳定零自由度", "稳定模式", "零维稳定"],
+      "action": "SetTracking0DofStable"
+    },
+    {
+      "id": "pause_listen",
+      "displayName": "暂停聆听",
+      "phrases": ["暂停聆听", "停止聆听", "暂停识别"],
+      "action": "PauseVoiceListen"
+    },
+    {
+      "id": "resume_listen",
+      "displayName": "继续聆听",
+      "phrases": ["继续聆听", "开始聆听", "开始识别"],
+      "action": "ResumeVoiceListen"
+    },
+    {
+      "id": "clear_voice_log",
+      "displayName": "清空口令记录",
+      "phrases": ["清空记录", "清除口令", "清空日志"],
+      "action": "ClearVoiceCommandLog"
+    }
+  ]
+}

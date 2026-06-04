@@ -75,6 +75,13 @@ Beam Pro 上提供 **可拖动、可滚动** 的 RGB 调试日志面板（标题
 - **Show / Hide Glasses UI**：切换眼镜端控制 Canvas 显示
 - **Vibrate**：Controller 震动测试
 
+### 语音口令（离线中文，20 条）
+
+- 词表文件：`Assets/StreamingAssets/VoiceCommands/commands_zh.json`（可单独编辑口令与 `action`）
+- 引擎：`VoiceCommandRecognizer` + Vosk 语法约束识别，麦克风来源为 `XREALMicrophoneStream`
+- Beam Pro 屏幕左侧 **「语音口令识别」** 小窗：显示识别原文、命中口令、执行状态
+- 首次使用在 Unity 菜单执行 **XREAL → Download Chinese Vosk Model**（约 42 MB），再 **Regenerate Vosk Model Manifest**，然后重新打 Android 包
+
 ## Beam Pro 屏幕控件
 
 在 Android 设备（Beam Pro）上运行时，屏幕 overlay 提供：
@@ -85,6 +92,7 @@ Beam Pro 上提供 **可拖动、可滚动** 的 RGB 调试日志面板（标题
 | Show / Hide Glasses UI | 显示/隐藏眼镜 UI |
 | Move X± / Y± / Z± | 移动参考立方体与 Check Plane |
 | RGB Debug Log 面板 | 拖动标题栏移动；滑动查看完整日志 |
+| 语音口令识别 面板 | 显示最近识别结果与是否执行 |
 
 ## 构建与部署
 
@@ -115,7 +123,9 @@ Assets/
     ├── HelloMR.cs                     # 追踪/输入/UI 总控
     ├── RGBCameraFloatingWindow.cs     # RGB 相机 + Beam Pro 日志面板
     ├── LeftEyeDisplayWindow.cs        # Beam Pro 左眼预览
-    └── ReferenceCubeSpawner.cs          # 参考立方体 / Check Plane
+    ├── ReferenceCubeSpawner.cs          # 参考立方体 / Check Plane
+    ├── XREALMicrophoneStream.cs         # 眼镜麦 PCM 流
+    └── VoiceCommands/                   # 离线口令识别（词表 + Vosk + Beam Pro 面板）
 ```
 
 仓库根目录另有 `VisionProMsgLocal.proto`、`VisionProMsgRemote.proto`，为 Vision Pro 实时通信协议定义，**尚未接入 Unity 运行时**。

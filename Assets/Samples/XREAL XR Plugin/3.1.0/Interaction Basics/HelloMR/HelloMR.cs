@@ -127,6 +127,32 @@ namespace Unity.XR.XREAL.Samples
             ApplyGlassesControlWindowVisibility();
         }
 
+        public void SetGlassesControlWindowVisible(bool visible)
+        {
+            m_GlassesControlWindowVisible = visible;
+            ApplyGlassesControlWindowVisibility();
+        }
+
+        public void SetTrackingMode(TrackingType trackingType)
+        {
+            _ = XREALPlugin.SwitchTrackingTypeAsync(trackingType, OnTrackingTypeChanged);
+            switch (trackingType)
+            {
+                case TrackingType.MODE_0DOF:
+                    m_Toggle0Dof.SetIsOnWithoutNotify(true);
+                    break;
+                case TrackingType.MODE_0DOF_STAB:
+                    m_Toggle0DofStable.SetIsOnWithoutNotify(true);
+                    break;
+                case TrackingType.MODE_3DOF:
+                    m_Toggle3Dof.SetIsOnWithoutNotify(true);
+                    break;
+                case TrackingType.MODE_6DOF:
+                    m_Toggle6Dof.SetIsOnWithoutNotify(true);
+                    break;
+            }
+        }
+
         void ApplyDefaultInputOnStart()
         {
             if (m_DefaultToHandInput)
@@ -199,7 +225,7 @@ namespace Unity.XR.XREAL.Samples
         /// <summary>
         /// Controller drives interaction; hand tracking runs for visualization only.
         /// </summary>
-        void ApplyControllerWithHandVisualizationOnly()
+        public void ApplyControllerWithHandVisualizationOnly()
         {
             SyncPluginInputSource(InputSource.ControllerAndHands);
             SetHandVisualizersActive(true);
