@@ -85,6 +85,8 @@ namespace Unity.XR.XREAL.Samples
             var right = GameObject.Find("Right Hand Tracking");
             if (left != null && right != null)
                 m_HandVisualizers = new[] { left, right };
+            else
+                Debug.LogWarning($"[HelloMR] Hand visualizers not found (left={left != null}, right={right != null}).");
         }
 
         void EnsureGlassesControlWindowReference()

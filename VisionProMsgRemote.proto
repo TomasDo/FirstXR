@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package remote;
+
+// 学生端作为服务器
+service StudentWithTeachcerService {
+    // 双向流式通信通道
+    rpc EstablishBidirectionalStream (stream ClientMessage) returns (stream ServerMessage) {}
+    rpc alignRobot (CartPosData) returns (CartPosData) {}
+}
+
+// 客户端消息
+message ClientMessage {
+    oneof content {
+        JointPosData jointpose = 1;
+        Heartbeat heartbeat = 2;
+        CartPosData cartpose = 3;
+    }
+}
+
+// 位姿定义
+message JointPosData {
+    repeated float transform = 1; // 6 float：tx,ty,tz,rx,ry,rz
+}
+
+message CartPosData {
+    repeated float transform = 1; // 6 float：tx,ty,tz,rx,ry,rz
+}
+
+// 服务器消息
+message ServerMessage {
+    oneof content {
+        string command = 1;    // 机械臂控制指令
+        EndForce endForce = 2; //末端受力
+        Heartbeat heartbeat = 3;    // 心跳, [Deprecated]
+    }
+}
+
+// 点定义
+message EndForce {
+  float x = 1;    // X受力
+  float y = 2;    // Y受力
+  float z = 3;    // Z受力
+}
+
+// 心跳
+message Heartbeat {
+    int64 timestamp = 1;
+}

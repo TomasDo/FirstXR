@@ -1,0 +1,193 @@
+syntax = "proto3";
+
+package realtime;
+
+// 服务定义
+service RealtimeService {
+    // 请求文件流下载
+    rpc DownloadFile (FileRequest) returns (stream FileChunk) {}
+    
+    // 请求单帧方案数据--TODO [abandoned]
+    rpc requestPlanData (PlanDataRequest) returns (PlanDataResponse) {}
+    
+    // 双向流式通信通道
+    rpc EstablishBidirectionalStream (stream ClientMessage) returns (stream ServerMessage) {}
+
+    // 推送手部骨骼（每条消息是一帧 2 * 25 个关节）[deprecated]
+    rpc StreamHandSkeleton(stream HandSkeleton) returns (HandSkeletonResponse);
+}
+
+
+// 连接方案数据
+message PlanDataRequest {
+    string client_id = 1;
+}
+
+// 方案数据返回
+message PlanDataResponse {
+    CupParam initCupRadius = 1; // 规划打磨半径
+}
+
+// 客户端消息
+message ClientMessage {
+    oneof content {
+        Command command = 1;
+        Heartbeat heartbeat = 2;
+    }
+}
+
+// 服务器消息
+message ServerMessage {
+    oneof content {
+        StatusUpdate status = 1;            // 磨削中时的状态更新
+        PointCloud point_cloud = 2;         //  磨削中时的模型表面更新
+        Heartbeat heartbeat = 3;            // [未实际使用]  心跳
+        AbnormalCondition condition = 4;    //异常情况相关信息
+        CommandResult result = 5;           //命令执行结果
+        CupParam cupParam  = 6;             // [未实际使用] 髋臼杯尺寸参数设定
+        ReamerData reamerData = 7;      // [未实际使用] 钻头磨锉当前中心位置
+    }
+}
+
+// 命令
+message Command {
+    enum CommandType {
+        moveToRecord = 0;             //初始
+        moveToolHandGuiding = 1;      //示教
+        fixPosition = 2;              //正位
+        fixAngle = 3;                 //正向
+        fixLine = 4;                  //定线
+        stop = 5;                     //停止
+        cancelcompensateGravity = 6;  //无配重
+        compensateGravity_1 = 7;      //套筒
+        compensateGravity_2 = 8;      //手柄
+        compensateGravity_3 = 9;      //钻枪
+        fixReamerSize = 10;           //磨锉尺寸修改
+        fixHapticBoundary = 11;       //虚拟墙修改
+        raspPowerOn  = 12;            //磨锉开启
+        raspPowerOff = 13;            //磨锉关闭
+        boneModelReset   = 14;        //模型重置
+        armFollowingOn   = 15;        //机械臂随动开启
+        armFollowingOff  =16;         //机械臂随动关闭
+        teahcerControlOn  =17;         //教师端控制开启
+        teahcerControlOff  =18;         //教师端控制关闭
+        objectTrackingOn  =19;         //模型跟踪开启
+        objectTrackingOff  =20;         //模型跟踪关闭
+    }
+    CommandType type = 1;
+    string parameter = 2;
+}
+
+
+// 磨削中时的状态更新
+message StatusUpdate {
+    double planinclination = 1;  //plan 外展
+    double plananteversion = 2;  //plan 前倾
+    double inclination = 3;  //外展
+    double anteversion = 4;  //前倾
+    double planeoffset = 5;  //平面偏移
+    double depth = 6;        //剩余深度
+    int32 raspRadius = 7;   //当前磨锉半径
+    PoseMatrix raspPose = 8; //当前磨锉位姿
+}
+
+
+// 点定义
+message RenderPoint {
+  float x = 1;    // X坐标
+  float y = 2;    // Y坐标
+  float z = 3;    // Z坐标
+  uint32 color = 4; // RGBA颜色值
+  uint32 index = 5; // 索引值
+}
+
+message ReamerData {
+  float planRenderRadius = 1;
+  float currReamerRadius = 2;
+  PointCenter planRenderCenter = 3;
+  PointCenter currReamerCenter = 4;
+}
+
+// 点云数据
+message PointCloud {
+    repeated RenderPoint points = 1;
+    int32 frame_number = 2;
+}
+
+//异常情况
+message AbnormalCondition {
+    enum AbnormalType {
+        ProtectiveStop = 0;       //保护性停止
+        EmergencyStop = 1;        //紧急停止
+        ArmLock = 2;              //抱死
+        ArmWristSingularity = 3;  //腕部奇异点
+        ArmElbowSingularity = 4;  //肘部奇异点
+        ArmHeadSingularity = 5;   //头部奇异点
+        AbnormalRebooting = 7;    // 异常重启中
+        AbnormalRebooted = 8;     // 异常重启完成
+    }
+    AbnormalType type = 1;
+}
+
+message CommandResult{
+    enum CommandType{
+        FixPosition = 0;
+        FixAngle = 1;
+        FixLine = 2;
+    }
+    CommandType commandType = 1;
+    bool   success = 2;
+    string message = 3;
+}
+
+// [未实际使用] 当前默认使用的是髋臼杯中心构建的坐标系，所以仅使用半径作为上色依据
+message CupParam{
+    double radius = 1;
+    PointCenter planRenderCenter = 2;
+}
+
+// [未实际使用]
+message PointCenter{
+    repeated float center = 1;
+}
+
+// [未实际使用] 心跳
+message Heartbeat {
+    int64 timestamp = 1;
+}
+
+// 文件请求
+message FileRequest {
+    string file_path = 1;
+}
+
+// 文件块
+message FileChunk {
+    bytes content = 1;
+    int32 chunk_index = 2;
+    int32 total_chunks = 3;
+}
+
+// 位姿定义
+message PoseMatrix {
+    repeated float transform = 1; // 16 float
+}
+//-----HAND------
+
+message Joint {
+    repeated float transform = 1;  // 16 float
+    string name          = 2;      // "关节名称"
+}
+
+// 单帧双手骨骼：左右各 25 个 Joint
+message HandSkeleton {
+    repeated Joint  leftJoints = 1;      // len = 25
+    repeated Joint  rightJoints = 2;     // len = 25
+    int64    timestamp    = 3;           // 毫秒级时间戳
+}
+
+// 服务器返回
+message HandSkeletonResponse {
+    bool   success = 1;
+    string message = 2;
+}

@@ -1,0 +1,28 @@
+{
+    "name": "Unity.XR.XREAL.Samples.InteractionBasics",
+    "rootNamespace": "",
+    "references": [
+        "Unity.XR.XREAL",
+        "Unity.XR.Hands",
+        "Unity.XR.CoreUtils",
+        "Unity.XR.Interaction.Toolkit",
+        "Unity.TextMeshPro",
+        "Unity.UGUI",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.xr.hands",
+            "expression": "",
+            "define": "XR_HANDS"
+        }
+    ],
+    "noEngineReferences": false
+}
