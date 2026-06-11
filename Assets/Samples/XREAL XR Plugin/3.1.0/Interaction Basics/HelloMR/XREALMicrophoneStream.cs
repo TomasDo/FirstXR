@@ -345,9 +345,10 @@ namespace Unity.XR.XREAL.Samples
             if (!m_ShowDebugOverlayOnBeamPro || Application.platform != RuntimePlatform.Android)
                 return;
 
-            const float width = 480f;
-            var height = 120f;
-            var rect = new Rect(Screen.width - width - 16f, Screen.height - height - 16f, width, height);
+            var rgbHeight = BeamProOverlayLayout.EstimateRgbPanelHeight(520f);
+            var rect = BeamProOverlayLayout.GetMicrophoneOverlayRect(
+                BeamProOverlayLayout.MaxButtonRows,
+                rgbHeight);
 
             EnsureOverlayStyle();
             GUI.depth = 11;

@@ -148,10 +148,13 @@ namespace Unity.XR.XREAL.Samples
                 return;
 
             const float width = 520f;
-            var height = Mathf.Min(Screen.height * 0.45f, 380f);
-            var x = (Screen.width - width) * 0.5f;
-            var y = (Screen.height - height) * 0.5f;
-            var rect = new Rect(x, y, width, height);
+            var preferredHeight = Mathf.Min(Screen.height * 0.45f, 380f);
+            var rgbHeight = BeamProOverlayLayout.EstimateRgbPanelHeight(520f);
+            var rect = BeamProOverlayLayout.GetHandDiagnosticsRect(
+                BeamProOverlayLayout.MaxButtonRows,
+                rgbHeight,
+                width,
+                preferredHeight);
 
             EnsureOverlayStyle();
 

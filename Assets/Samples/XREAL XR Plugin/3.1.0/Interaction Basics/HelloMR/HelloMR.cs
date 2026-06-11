@@ -38,6 +38,9 @@ namespace Unity.XR.XREAL.Samples
         [SerializeField]
         bool m_ShowBeamProObjectMoveButtons = true;
 
+        [SerializeField]
+        bool m_ShowBeamProCheckPlaneAppearanceButtons = true;
+
         CanvasGroup m_GlassesControlCanvasGroup;
         ReferenceCubeSpawner m_ReferenceCubeSpawner;
 
@@ -325,12 +328,13 @@ namespace Unity.XR.XREAL.Samples
             if (!m_ShowBeamProInputToggle || Application.platform != RuntimePlatform.Android)
                 return;
 
-            const float width = 280f;
-            const float height = 90f;
-            const float margin = 30f;
-            const float spacing = 12f;
-            var x = Screen.width - width - margin;
-            var y = margin;
+            var rowCount = CountRightColumnButtonRows();
+            var buttonLayout = BeamProOverlayLayout.ComputeRightColumnButtons(rowCount);
+            var x = buttonLayout.X;
+            var y = buttonLayout.Y;
+            var width = buttonLayout.Width;
+            var height = buttonLayout.ButtonHeight;
+            var rowSpacing = buttonLayout.RowSpacing;
 
             var currentSource = XREALPlugin.GetInputSource();
             bool isHandControl = IsHandControlInput(currentSource);
@@ -344,7 +348,7 @@ namespace Unity.XR.XREAL.Samples
                     ChangeToHandInput();
             }
 
-            y += height + spacing;
+            y += height + rowSpacing;
             string uiLabel = m_GlassesControlWindowVisible ? "Hide Glasses UI" : "Show Glasses UI";
             if (GUI.Button(new Rect(x, y, width, height), uiLabel))
                 ToggleGlassesControlWindow();
@@ -352,18 +356,38 @@ namespace Unity.XR.XREAL.Samples
             if (!m_ShowBeamProObjectMoveButtons)
                 return;
 
-            y += height + spacing;
-            DrawMoveButtons(x, y, width, height);
+            y += height + rowSpacing;
+            y = DrawMoveButtons(x, y, width, height, rowSpacing);
+
+            if (!m_ShowBeamProCheckPlaneAppearanceButtons)
+                return;
+
+            DrawCheckPlaneAppearanceButtons(x, y, width, height, rowSpacing);
         }
 
-        void DrawMoveButtons(float x, float y, float width, float height)
+        int CountRightColumnButtonRows()
+        {
+            var rows = 2;
+            if (m_ShowBeamProObjectMoveButtons)
+                rows += 3;
+
+            if (m_ShowBeamProCheckPlaneAppearanceButtons)
+            {
+                EnsureReferenceCubeSpawnerReference();
+                if (m_ReferenceCubeSpawner != null && m_ReferenceCubeSpawner.HasCheckPlane)
+                    rows += 4;
+            }
+
+            return rows;
+        }
+
+        float DrawMoveButtons(float x, float y, float width, float height, float rowSpacing)
         {
             EnsureReferenceCubeSpawnerReference();
             if (m_ReferenceCubeSpawner == null)
-                return;
+                return y;
 
             var buttonWidth = (width - 12f) * 0.5f;
-            var rowSpacing = 8f;
 
             if (GUI.Button(new Rect(x, y, buttonWidth, height), "Move X+"))
                 m_ReferenceCubeSpawner.MoveTargetsByDirection(Vector3.right);
@@ -381,6 +405,41 @@ namespace Unity.XR.XREAL.Samples
                 m_ReferenceCubeSpawner.MoveTargetsByDirection(Vector3.forward);
             if (GUI.Button(new Rect(x + buttonWidth + 12f, y, buttonWidth, height), "Move Z-"))
                 m_ReferenceCubeSpawner.MoveTargetsByDirection(Vector3.back);
+
+            return y + height + rowSpacing;
+        }
+
+        void DrawCheckPlaneAppearanceButtons(float x, float y, float width, float height, float rowSpacing)
+        {
+            EnsureReferenceCubeSpawnerReference();
+            if (m_ReferenceCubeSpawner == null || !m_ReferenceCubeSpawner.HasCheckPlane)
+                return;
+
+            var buttonWidth = (width - 12f) * 0.5f;
+            const int colorStep = 25;
+
+            if (GUI.Button(new Rect(x, y, buttonWidth, height), "Trans +10%"))
+                m_ReferenceCubeSpawner.IncreaseCheckPlaneTransparency();
+            if (GUI.Button(new Rect(x + buttonWidth + 12f, y, buttonWidth, height), "Trans -10%"))
+                m_ReferenceCubeSpawner.DecreaseCheckPlaneTransparency();
+
+            y += height + rowSpacing;
+            if (GUI.Button(new Rect(x, y, buttonWidth, height), "R+"))
+                m_ReferenceCubeSpawner.AdjustCheckPlaneColorChannel(0, colorStep);
+            if (GUI.Button(new Rect(x + buttonWidth + 12f, y, buttonWidth, height), "R-"))
+                m_ReferenceCubeSpawner.AdjustCheckPlaneColorChannel(0, -colorStep);
+
+            y += height + rowSpacing;
+            if (GUI.Button(new Rect(x, y, buttonWidth, height), "G+"))
+                m_ReferenceCubeSpawner.AdjustCheckPlaneColorChannel(1, colorStep);
+            if (GUI.Button(new Rect(x + buttonWidth + 12f, y, buttonWidth, height), "G-"))
+                m_ReferenceCubeSpawner.AdjustCheckPlaneColorChannel(1, -colorStep);
+
+            y += height + rowSpacing;
+            if (GUI.Button(new Rect(x, y, buttonWidth, height), "B+"))
+                m_ReferenceCubeSpawner.AdjustCheckPlaneColorChannel(2, colorStep);
+            if (GUI.Button(new Rect(x + buttonWidth + 12f, y, buttonWidth, height), "B-"))
+                m_ReferenceCubeSpawner.AdjustCheckPlaneColorChannel(2, -colorStep);
         }
 
         /// <summary>

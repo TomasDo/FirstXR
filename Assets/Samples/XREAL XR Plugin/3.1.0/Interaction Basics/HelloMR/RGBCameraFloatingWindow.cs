@@ -526,11 +526,12 @@ namespace Unity.XR.XREAL.Samples
 
         Rect GetDebugPanelRect()
         {
-            var width = Mathf.Clamp(m_DebugPanelWidth, 320f, Screen.width - k_DebugPanelMargin * 2f);
-            var height = Mathf.Clamp(m_DebugPanelHeight, 200f, Screen.height - k_DebugPanelMargin * 2f);
-            m_DebugPanelPosition.x = Mathf.Clamp(m_DebugPanelPosition.x, k_DebugPanelMargin, Screen.width - width - k_DebugPanelMargin);
-            m_DebugPanelPosition.y = Mathf.Clamp(m_DebugPanelPosition.y, k_DebugPanelMargin, Screen.height - height - k_DebugPanelMargin);
-            return new Rect(m_DebugPanelPosition.x, m_DebugPanelPosition.y, width, height);
+            var rect = BeamProOverlayLayout.ClampRgbDebugPanelRect(
+                m_DebugPanelWidth,
+                m_DebugPanelHeight,
+                m_DebugPanelPosition);
+            m_DebugPanelPosition = rect.position;
+            return rect;
         }
 
         void HandleDebugPanelDrag(Rect panelRect)

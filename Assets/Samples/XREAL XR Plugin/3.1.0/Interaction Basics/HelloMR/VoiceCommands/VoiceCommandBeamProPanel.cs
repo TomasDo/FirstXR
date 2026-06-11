@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
+using Unity.XR.XREAL.Samples;
 
 namespace Unity.XR.XREAL.Samples.VoiceCommands
 {
@@ -18,7 +19,6 @@ namespace Unity.XR.XREAL.Samples.VoiceCommands
         readonly List<LogEntry> m_Entries = new List<LogEntry>(32);
         readonly int m_MaxEntries;
         Vector2 m_Scroll;
-        Vector2 m_Position;
         GUIStyle m_BoxStyle;
         GUIStyle m_TextStyle;
         string m_StatusLine = "语音口令：初始化中";
@@ -28,7 +28,6 @@ namespace Unity.XR.XREAL.Samples.VoiceCommands
         public VoiceCommandBeamProPanel(int maxEntries = 24)
         {
             m_MaxEntries = maxEntries;
-            m_Position = new Vector2(16f, Screen.height * 0.42f);
         }
 
         public void SetStatus(string status) => m_StatusLine = status;
@@ -59,9 +58,14 @@ namespace Unity.XR.XREAL.Samples.VoiceCommands
             if (Application.platform != RuntimePlatform.Android)
                 return;
 
-            const float width = 520f;
-            const float height = 300f;
-            var rect = new Rect(m_Position.x, m_Position.y, width, height);
+            const float preferredWidth = 520f;
+            const float preferredHeight = 300f;
+            var rgbHeight = BeamProOverlayLayout.EstimateRgbPanelHeight(520f);
+            var rect = BeamProOverlayLayout.GetVoicePanelRect(
+                BeamProOverlayLayout.MaxButtonRows,
+                rgbHeight,
+                preferredWidth,
+                preferredHeight);
 
             EnsureStyles();
             GUI.depth = 12;

@@ -63,8 +63,16 @@ namespace Unity.XR.XREAL.Samples
         [SerializeField]
         float m_MoveStepMeters = 0.05f;
 
+        const float CheckPlaneTransparencyStep = 0.1f;
+        const int CheckPlaneColorChannelStep = 25;
+
         Transform m_CubeRoot;
         Transform m_CheckPlaneRoot;
+        Material m_CheckPlaneMaterial;
+        int m_CheckPlaneRed;
+        int m_CheckPlaneGreen;
+        int m_CheckPlaneBlue;
+        float m_CheckPlaneAlpha = 1f;
 
         void Awake()
         {
@@ -144,6 +152,92 @@ namespace Unity.XR.XREAL.Samples
                 m_CheckPlaneRoot.position += delta;
         }
 
+        public bool HasCheckPlane => m_CheckPlaneMaterial != null;
+
+        public void IncreaseCheckPlaneTransparency()
+        {
+            AdjustCheckPlaneAlpha(-CheckPlaneTransparencyStep);
+        }
+
+        public void DecreaseCheckPlaneTransparency()
+        {
+            AdjustCheckPlaneAlpha(CheckPlaneTransparencyStep);
+        }
+
+        public void AdjustCheckPlaneColorChannel(int channel, int delta)
+        {
+            if (m_CheckPlaneMaterial == null)
+                return;
+
+            switch (channel)
+            {
+                case 0:
+                    m_CheckPlaneRed = Mathf.Clamp(m_CheckPlaneRed + delta, 0, 255);
+                    break;
+                case 1:
+                    m_CheckPlaneGreen = Mathf.Clamp(m_CheckPlaneGreen + delta, 0, 255);
+                    break;
+                case 2:
+                    m_CheckPlaneBlue = Mathf.Clamp(m_CheckPlaneBlue + delta, 0, 255);
+                    break;
+                default:
+                    return;
+            }
+
+            ApplyCheckPlaneAppearance();
+        }
+
+        void AdjustCheckPlaneAlpha(float delta)
+        {
+            if (m_CheckPlaneMaterial == null)
+                return;
+
+            m_CheckPlaneAlpha = Mathf.Clamp01(m_CheckPlaneAlpha + delta);
+            ApplyCheckPlaneAppearance();
+        }
+
+        void ApplyCheckPlaneAppearance()
+        {
+            if (m_CheckPlaneMaterial == null)
+                return;
+
+            var color = new Color(
+                m_CheckPlaneRed / 255f,
+                m_CheckPlaneGreen / 255f,
+                m_CheckPlaneBlue / 255f,
+                m_CheckPlaneAlpha);
+            m_CheckPlaneMaterial.color = color;
+
+            if (m_CheckPlaneAlpha >= 0.999f)
+                SetMaterialOpaque(m_CheckPlaneMaterial);
+            else
+                SetMaterialTransparent(m_CheckPlaneMaterial);
+        }
+
+        static void SetMaterialTransparent(Material material)
+        {
+            material.SetFloat("_Mode", 3f);
+            material.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
+            material.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
+            material.SetInt("_ZWrite", 0);
+            material.DisableKeyword("_ALPHATEST_ON");
+            material.EnableKeyword("_ALPHABLEND_ON");
+            material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            material.renderQueue = 3000;
+        }
+
+        static void SetMaterialOpaque(Material material)
+        {
+            material.SetFloat("_Mode", 0f);
+            material.SetInt("_SrcBlend", (int)BlendMode.One);
+            material.SetInt("_DstBlend", (int)BlendMode.Zero);
+            material.SetInt("_ZWrite", 1);
+            material.DisableKeyword("_ALPHATEST_ON");
+            material.DisableKeyword("_ALPHABLEND_ON");
+            material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            material.renderQueue = -1;
+        }
+
         Transform CreateCube(Transform parent)
         {
             var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -191,9 +285,11 @@ namespace Unity.XR.XREAL.Samples
             meshFilter.sharedMesh = mesh;
 
             var meshRenderer = modelRoot.AddComponent<MeshRenderer>();
-            meshRenderer.material = CreateCheckPlaneMaterial();
+            m_CheckPlaneMaterial = CreateCheckPlaneMaterial();
+            meshRenderer.material = m_CheckPlaneMaterial;
             meshRenderer.shadowCastingMode = ShadowCastingMode.On;
             meshRenderer.receiveShadows = true;
+            InitializeCheckPlaneAppearanceFromColor(m_CheckPlaneColor);
 
             if (m_AutoRotate)
                 StartCoroutine(RotateAroundLocalAxes(modelRoot.transform));
@@ -218,9 +314,16 @@ namespace Unity.XR.XREAL.Samples
 
         Material CreateCheckPlaneMaterial()
         {
-            var material = new Material(Shader.Find("Standard"));
-            material.color = m_CheckPlaneColor;
-            return material;
+            return new Material(Shader.Find("Standard"));
+        }
+
+        void InitializeCheckPlaneAppearanceFromColor(Color color)
+        {
+            m_CheckPlaneRed = Mathf.Clamp(Mathf.RoundToInt(color.r * 255f), 0, 255);
+            m_CheckPlaneGreen = Mathf.Clamp(Mathf.RoundToInt(color.g * 255f), 0, 255);
+            m_CheckPlaneBlue = Mathf.Clamp(Mathf.RoundToInt(color.b * 255f), 0, 255);
+            m_CheckPlaneAlpha = Mathf.Clamp01(color.a);
+            ApplyCheckPlaneAppearance();
         }
 
         static bool TryCreateStlMesh(byte[] data, out Mesh mesh)

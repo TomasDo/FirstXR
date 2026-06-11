@@ -217,25 +217,28 @@ namespace Unity.XR.XREAL.Samples
 
             var texture = m_PreviewTexture;
             var headerHeight = Mathf.Max(28f, Screen.height / 48f);
-            var top = Screen.height * m_TopReservedFraction;
-            var maxWidth = Screen.width - m_ScreenMargin * 2f;
-            var maxHeight = Mathf.Min(
-                Screen.height * m_MaxScreenHeightFraction,
-                Screen.height - top - m_ScreenMargin);
+            var rgbHeight = BeamProOverlayLayout.EstimateRgbPanelHeight(520f);
+            var region = BeamProOverlayLayout.GetLeftEyePreviewRegion(
+                BeamProOverlayLayout.MaxButtonRows,
+                rgbHeight,
+                m_MaxScreenHeightFraction);
 
-            float previewWidth = maxWidth;
-            float previewHeight = maxHeight;
+            var maxPreviewWidth = region.width;
+            var maxPreviewHeight = Mathf.Max(80f, region.height - headerHeight);
+
+            float previewWidth = maxPreviewWidth;
+            float previewHeight = maxPreviewHeight;
             if (texture != null && texture.width > 0 && texture.height > 0)
             {
                 var aspect = (float)texture.width / texture.height;
-                previewHeight = Mathf.Min(maxHeight, previewWidth / aspect);
+                previewHeight = Mathf.Min(maxPreviewHeight, previewWidth / aspect);
                 previewWidth = previewHeight * aspect;
             }
 
-            var totalHeight = headerHeight + previewHeight + m_ScreenMargin;
-            var x = (Screen.width - previewWidth) * 0.5f;
-            var y = Screen.height - totalHeight - m_ScreenMargin;
-            var panelRect = new Rect(x - 8f, y - 8f, previewWidth + 16f, totalHeight + 8f);
+            var totalBlockHeight = headerHeight + previewHeight;
+            var x = region.x + (region.width - previewWidth) * 0.5f;
+            var y = region.y + region.height - totalBlockHeight;
+            var panelRect = new Rect(x - 8f, y - 8f, previewWidth + 16f, totalBlockHeight + 8f);
 
             var previousColor = GUI.color;
             GUI.color = new Color(0f, 0f, 0f, 0.82f);
