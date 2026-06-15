@@ -217,8 +217,8 @@ namespace Unity.XR.XREAL.Samples
         static void SetMaterialTransparent(Material material)
         {
             material.SetFloat("_Mode", 3f);
-            material.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
-            material.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
+            material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
             material.SetInt("_ZWrite", 0);
             material.DisableKeyword("_ALPHATEST_ON");
             material.EnableKeyword("_ALPHABLEND_ON");
@@ -229,8 +229,8 @@ namespace Unity.XR.XREAL.Samples
         static void SetMaterialOpaque(Material material)
         {
             material.SetFloat("_Mode", 0f);
-            material.SetInt("_SrcBlend", (int)BlendMode.One);
-            material.SetInt("_DstBlend", (int)BlendMode.Zero);
+            material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+            material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
             material.SetInt("_ZWrite", 1);
             material.DisableKeyword("_ALPHATEST_ON");
             material.DisableKeyword("_ALPHABLEND_ON");
