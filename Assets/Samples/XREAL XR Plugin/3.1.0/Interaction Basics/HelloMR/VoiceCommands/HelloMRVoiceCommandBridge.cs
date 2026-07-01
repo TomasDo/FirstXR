@@ -30,9 +30,6 @@ namespace Unity.XR.XREAL.Samples.VoiceCommands
                 case "ChangeToControllerInput":
                     m_HelloMR?.ChangeToControllerInput();
                     return m_HelloMR != null;
-                case "ApplyControllerWithHandVisualizationOnly":
-                    m_HelloMR?.ApplyControllerWithHandVisualizationOnly();
-                    return m_HelloMR != null;
                 case "ShowGlassesControlWindow":
                     m_HelloMR?.SetGlassesControlWindowVisible(true);
                     return m_HelloMR != null;

@@ -41,10 +41,9 @@
 | 模式 | 行为 |
 |------|------|
 | **Controller（默认）** | 交互由虚拟 Controller 驱动 |
-| **Controller + 手部显示** | `ControllerAndHands`：开启手部追踪与双手模型显示，**禁用手部 Interactor**，手势不控制 UI/物体 |
-| **Hands** | 完整手势输入，启用手部 Interactor |
+| **Hands** | 完整手势输入（手势可直接控制 UI/物体） |
 
-启动默认：**Controller 控制 + 仅显示手部追踪**（`Enable Hand Tracking Visualization On Start`）。
+启动默认：**Controller**。
 
 在 **Beam Pro** 屏幕右上角 OnGUI 按钮可切换 Controller / Hand；眼镜端 Canvas 也有 **Controller / Hand** 按钮。
 
@@ -75,7 +74,7 @@ Beam Pro 上提供 **可拖动、可滚动** 的 RGB 调试日志面板（标题
 - **Show / Hide Glasses UI**：切换眼镜端控制 Canvas 显示
 - **Vibrate**：Controller 震动测试
 
-### 语音口令（离线中文，20 条）
+### 语音口令（离线中文，19 条）
 
 - 词表文件：`Assets/StreamingAssets/VoiceCommands/commands_zh.json`（可单独编辑口令与 `action`）
 - 引擎：`VoiceCommandRecognizer` + Vosk 语法约束识别，麦克风来源为 `XREALMicrophoneStream`
@@ -94,9 +93,6 @@ Beam Pro 上提供 **可拖动、可滚动** 的 RGB 调试日志面板（标题
 │  标题栏拖动 / 内容区滚动                        Switch / UI / Move │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│        [Hand Tracking Diagnostics] 屏幕正中                  │  ← 中部
-│        520×(≤45%屏高) 绿字状态                               │
-│                                                             │
 │  [语音口令识别] 左侧约 42% 高度处                             │
 │   520×300，黄字滚动日志                                      │
 │                                                             │
@@ -113,7 +109,7 @@ Beam Pro 上提供 **可拖动、可滚动** 的 RGB 调试日志面板（标题
 
 | 控件 | 用途 |
 |------|------|
-| **Switch to Controller** / **Switch to Hand** | 在 Controller 与完整手势输入（Hands）之间切换；当前为 Hands 时按钮文案为前者，反之亦然。默认启动为 Controller 控制 + 仅显示手部模型（`ControllerAndHands`）。 |
+| **Switch to Controller** / **Switch to Hand** | 在 Controller 与完整手势输入（Hands）之间切换；当前为 Hands 时按钮文案为前者，反之亦然。默认启动为 Controller。 |
 | **Show Glasses UI** / **Hide Glasses UI** | 显示或隐藏**眼镜端** Canvas 控制面板（追踪 Toggle、Hand 按钮等），不改变 Beam Pro overlay。 |
 | **Move X+ / X-** | 将参考立方体与 Check Plane 沿世界 X 轴正/负方向平移一步（`ReferenceCubeSpawner`）。 |
 | **Move Y+ / Y-** | 沿世界 Y 轴上/下平移。 |
@@ -132,28 +128,19 @@ Beam Pro 上提供 **可拖动、可滚动** 的 RGB 调试日志面板（标题
 | **标题行信息** | Capture 状态、Camera 权限、设备类型、RGB 功能支持、Eye plug 状态。 |
 | **Inspector** | `Show Debug On Beam Pro`、`Debug Panel Width/Height`。 |
 
-### 3. 手部追踪诊断（`HandTrackingDiagnostics`）
-
-| 项目 | 说明 |
-|------|------|
-| **用途** | 显示手部子系统是否运行、左右手 `isTracked`、手部可视化节点与 Interactor 是否找到等。 |
-| **位置** | 屏幕**水平居中、垂直居中**，宽约 520px，高度不超过屏高 45%。 |
-| **交互** | 只读文本；同时可按间隔写入 Unity Console（`Log To Console`）。 |
-| **Inspector** | `Show Overlay On Beam Pro`。 |
-
-### 4. 语音口令识别（`VoiceCommandRecognizer`）
+### 3. 语音口令识别（`VoiceCommandRecognizer`）
 
 | 项目 | 说明 |
 |------|------|
 | **用途** | 显示离线中文口令识别：引擎状态、识别原文、命中口令名、置信度、是否已执行。 |
 | **位置** | 屏幕**左侧**，纵向约在屏高 **42%** 处，面板 **520×300**。 |
 | **交互** | 内容区**滚动**查看历史（最多约 24 条，新记录在上方）。 |
-| **口令来源** | `Assets/StreamingAssets/VoiceCommands/commands_zh.json`（20 条，可说同义词）。 |
+| **口令来源** | `Assets/StreamingAssets/VoiceCommands/commands_zh.json`（19 条，可说同义词）。 |
 | **Inspector** | `Show Beam Pro Panel`。 |
 
 与右上角按钮、语音等价的口令示例：「手势模式」「控制器模式」「显示界面」「向右」「六自由度」「暂停聆听」「清空记录」等（完整列表见词表 JSON）。
 
-### 5. 左眼预览（`LeftEyeDisplayWindow`）
+### 4. 左眼预览（`LeftEyeDisplayWindow`）
 
 | 项目 | 说明 |
 |------|------|
@@ -162,7 +149,7 @@ Beam Pro 上提供 **可拖动、可滚动** 的 RGB 调试日志面板（标题
 | **交互** | 只读画面；无拖动。右下角可显示分辨率等 `DebugInfo`；无帧时显示等待/错误文案。 |
 | **Inspector** | `Show On Beam Pro`、`Top Reserved Fraction`、`Max Screen Height Fraction`。 |
 
-### 6. 麦克风调试条（`XREALMicrophoneStream`，默认关闭）
+### 5. 麦克风调试条（`XREALMicrophoneStream`，默认关闭）
 
 | 项目 | 说明 |
 |------|------|

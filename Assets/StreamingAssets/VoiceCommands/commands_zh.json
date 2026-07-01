@@ -18,12 +18,6 @@
       "action": "ChangeToControllerInput"
     },
     {
-      "id": "controller_hands_display",
-      "displayName": "控制器加手部显示",
-      "phrases": ["显示手部", "控制器加手势", "手部显示"],
-      "action": "ApplyControllerWithHandVisualizationOnly"
-    },
-    {
       "id": "show_glasses_ui",
       "displayName": "显示眼镜界面",
       "phrases": ["显示界面", "打开界面", "显示眼镜"],

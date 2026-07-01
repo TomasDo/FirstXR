@@ -3,7 +3,6 @@
     "rootNamespace": "",
     "references": [
         "Unity.XR.XREAL",
-        "Unity.XR.Hands",
         "Unity.XR.CoreUtils",
         "Unity.XR.Interaction.Toolkit",
         "Unity.TextMeshPro",
@@ -18,12 +17,6 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [
-        {
-            "name": "com.unity.xr.hands",
-            "expression": "",
-            "define": "XR_HANDS"
-        }
-    ],
+    "versionDefines": [],
     "noEngineReferences": false
 }

@@ -98,28 +98,6 @@ namespace Unity.XR.XREAL.Samples
             return new Rect(Margin, top + Margin, width, height);
         }
 
-        public static Rect GetHandDiagnosticsRect(int buttonRows, float rgbPanelHeight, float preferredWidth, float preferredHeight)
-        {
-            var voiceRect = GetVoicePanelRect(buttonRows, rgbPanelHeight, 520f, 300f);
-            var top = GetTopBandBottom(buttonRows, rgbPanelHeight);
-            var bottom = GetBottomBandTop(out _);
-
-            var x = voiceRect.xMax + ColumnGap;
-            var width = RightColumnX - x - ColumnGap;
-            var height = Mathf.Min(preferredHeight, bottom - top - Margin * 2f);
-
-            if (width < 220f)
-            {
-                x = Margin;
-                width = LeftContentMaxWidth;
-                var stackedTop = voiceRect.yMax + ColumnGap;
-                height = Mathf.Min(preferredHeight, bottom - stackedTop - Margin);
-                return new Rect(x, stackedTop, width, Mathf.Max(120f, height));
-            }
-
-            return new Rect(x, top + Margin, width, Mathf.Max(120f, height));
-        }
-
         public static Rect GetLeftEyePreviewRegion(int buttonRows, float rgbPanelHeight, float maxHeightFraction)
         {
             var top = GetTopBandBottom(buttonRows, rgbPanelHeight) + Margin;
