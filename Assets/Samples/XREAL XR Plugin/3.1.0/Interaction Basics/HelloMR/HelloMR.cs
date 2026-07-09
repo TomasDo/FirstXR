@@ -27,8 +27,24 @@ namespace Unity.XR.XREAL.Samples
         [SerializeField]
         bool m_ShowBeamProCheckPlaneAppearanceButtons = true;
 
+        [SerializeField]
+        bool m_ShowDentalRobotBeamProPanel = true;
+
+        [SerializeField]
+        string m_DentalRobotServerHost = "192.168.31.166";
+
+        [SerializeField]
+        int m_DentalRobotServerPort = 50051;
+
+        [SerializeField]
+        string m_DentalRobotDeviceId = "beam-pro";
+
+        [SerializeField]
+        string m_DentalRobotDatasetId = "default";
+
         CanvasGroup m_GlassesControlCanvasGroup;
         ReferenceCubeSpawner m_ReferenceCubeSpawner;
+        RGBCameraFloatingWindow m_RGBCameraFloatingWindow;
 
         [SerializeField]
         TMP_Text m_TextCurrentMode;
@@ -45,8 +61,11 @@ namespace Unity.XR.XREAL.Samples
 
         void Awake()
         {
+            BeamProUnifiedLogWindow.EnsureInstance();
             EnsureGlassesControlWindowReference();
             EnsureReferenceCubeSpawnerReference();
+            EnsureRGBCameraFloatingWindowReference();
+            EnsureDentalRobotBeamProPanel();
         }
 
         private void Start()
@@ -78,6 +97,61 @@ namespace Unity.XR.XREAL.Samples
         {
             if (m_ReferenceCubeSpawner == null)
                 m_ReferenceCubeSpawner = FindObjectOfType<ReferenceCubeSpawner>();
+        }
+
+        void EnsureRGBCameraFloatingWindowReference()
+        {
+            if (m_RGBCameraFloatingWindow == null)
+                m_RGBCameraFloatingWindow = FindObjectOfType<RGBCameraFloatingWindow>();
+        }
+
+        void EnsureDentalRobotBeamProPanel()
+        {
+            if (!m_ShowDentalRobotBeamProPanel)
+                return;
+
+            if (FindObjectOfType<DentalRobotModelRenderer>() == null)
+            {
+                var renderer = new GameObject("Dental Robot Model Renderer");
+                renderer.AddComponent<DentalRobotModelRenderer>();
+            }
+
+            var existingClient = FindObjectOfType<DentalRobotGrpcClient>();
+            if (existingClient != null)
+            {
+                existingClient.ConfigureEndpoint(
+                    m_DentalRobotServerHost,
+                    m_DentalRobotServerPort,
+                    m_DentalRobotDeviceId,
+                    m_DentalRobotDatasetId);
+            }
+            else
+            {
+                var client = new GameObject("Dental Robot gRPC Client");
+                client.AddComponent<DentalRobotGrpcClient>().ConfigureEndpoint(
+                    m_DentalRobotServerHost,
+                    m_DentalRobotServerPort,
+                    m_DentalRobotDeviceId,
+                    m_DentalRobotDatasetId);
+            }
+
+            var existingDisplay = FindObjectOfType<DentalRobotBeamProDisplay>();
+            if (existingDisplay != null)
+            {
+                existingDisplay.ConfigureEndpoint(
+                    m_DentalRobotServerHost,
+                    m_DentalRobotServerPort,
+                    m_DentalRobotDeviceId,
+                    m_DentalRobotDatasetId);
+                return;
+            }
+
+            var panel = new GameObject("Dental Robot Beam Pro Display");
+            panel.AddComponent<DentalRobotBeamProDisplay>().ConfigureEndpoint(
+                m_DentalRobotServerHost,
+                m_DentalRobotServerPort,
+                m_DentalRobotDeviceId,
+                m_DentalRobotDatasetId);
         }
 
         void ApplyGlassesControlWindowVisibility()
@@ -253,6 +327,15 @@ namespace Unity.XR.XREAL.Samples
             if (GUI.Button(new Rect(x, y, width, height), uiLabel))
                 ToggleGlassesControlWindow();
 
+            EnsureRGBCameraFloatingWindowReference();
+            if (m_RGBCameraFloatingWindow != null)
+            {
+                y += height + rowSpacing;
+                string rgbLabel = m_RGBCameraFloatingWindow.IsWindowVisible ? "Hide RGB Window" : "Show RGB Window";
+                if (GUI.Button(new Rect(x, y, width, height), rgbLabel))
+                    m_RGBCameraFloatingWindow.ToggleWindowVisible();
+            }
+
             if (!m_ShowBeamProObjectMoveButtons)
                 return;
 
@@ -268,6 +351,10 @@ namespace Unity.XR.XREAL.Samples
         int CountRightColumnButtonRows()
         {
             var rows = 2;
+            EnsureRGBCameraFloatingWindowReference();
+            if (m_RGBCameraFloatingWindow != null)
+                rows += 1;
+
             if (m_ShowBeamProObjectMoveButtons)
                 rows += 3;
 

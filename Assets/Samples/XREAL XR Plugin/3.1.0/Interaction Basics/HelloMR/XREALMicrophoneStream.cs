@@ -41,6 +41,9 @@ namespace Unity.XR.XREAL.Samples
         const int MaxQueuedPcmBytes = 1024 * 1024 * 4;
 
         [SerializeField]
+        bool m_DisableMicrophoneStream = true;
+
+        [SerializeField]
         bool m_StartCaptureOnAwake = true;
 
         [SerializeField]
@@ -86,6 +89,9 @@ namespace Unity.XR.XREAL.Samples
 
         void Start()
         {
+            if (m_DisableMicrophoneStream)
+                return;
+
             if (m_StartCaptureOnAwake)
                 StartCapture();
         }
@@ -104,6 +110,12 @@ namespace Unity.XR.XREAL.Samples
         /// <summary> Begin microphone capture (requests RECORD_AUDIO on Android). </summary>
         public void StartCapture()
         {
+            if (m_DisableMicrophoneStream)
+            {
+                m_StatusText = "Mic stream: disabled";
+                return;
+            }
+
             if (m_IsCapturing || m_PendingStart)
                 return;
 
@@ -342,7 +354,7 @@ namespace Unity.XR.XREAL.Samples
 
         void OnGUI()
         {
-            if (!m_ShowDebugOverlayOnBeamPro || Application.platform != RuntimePlatform.Android)
+            if (m_DisableMicrophoneStream || !m_ShowDebugOverlayOnBeamPro || Application.platform != RuntimePlatform.Android)
                 return;
 
             var rgbHeight = BeamProOverlayLayout.EstimateRgbPanelHeight(520f);

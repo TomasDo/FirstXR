@@ -1,0 +1,81 @@
+// Copyright 2026 The gRPC Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package dentalmodeltransfer;
+
+service DentalModelTransfer {
+  // Android glasses connect as the client. The C++ side streams model data back
+  // while the client can send requests and acknowledgements on the same RPC.
+  rpc StreamDentalModel(stream ClientMessage) returns (stream ServerMessage) {}
+}
+
+message ClientMessage {
+  oneof payload {
+    ModelRequest request = 1;
+    ClientAck ack = 2;
+  }
+}
+
+message ModelRequest {
+  string device_id = 1;
+  string dataset_id = 2;
+}
+
+message ClientAck {
+  string dataset_id = 1;
+  string message = 2;
+}
+
+message ServerMessage {
+  oneof payload {
+    ModelMetadata metadata = 1;
+    StlChunk stl_chunk = 2;
+    TransferEnd end = 3;
+  }
+}
+
+message ModelMetadata {
+  string dataset_id = 1;
+
+  // drill relative to teeth. This example uses row-major 4x4 ordering.
+  repeated double drill_from_teeth = 2;
+
+  double distance = 3;
+  double lateral_distance = 4;
+  double angle = 5;
+}
+
+enum ModelType {
+  MODEL_TYPE_UNSPECIFIED = 0;
+  TEETH = 1;
+  DRILL = 2;
+}
+
+message StlChunk {
+  string dataset_id = 1;
+  ModelType model_type = 2;
+  string filename = 3;
+  int64 offset = 4;
+  bytes data = 5;
+}
+
+message TransferEnd {
+  string dataset_id = 1;
+  bool ok = 2;
+  string message = 3;
+  int64 teeth_bytes = 4;
+  int64 drill_bytes = 5;
+}

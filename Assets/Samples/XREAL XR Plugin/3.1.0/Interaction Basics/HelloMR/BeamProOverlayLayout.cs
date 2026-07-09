@@ -98,6 +98,18 @@ namespace Unity.XR.XREAL.Samples
             return new Rect(Margin, top + Margin, width, height);
         }
 
+        public static Rect GetDentalRobotPanelRect(int buttonRows, float rgbPanelHeight, float preferredWidth, float preferredHeight)
+        {
+            var top = GetTopBandBottom(buttonRows, rgbPanelHeight);
+            var bottom = GetBottomBandTop(out _);
+            var availableHeight = bottom - top - Margin;
+
+            var width = Mathf.Min(preferredWidth, LeftContentMaxWidth * 0.46f);
+            var height = Mathf.Min(preferredHeight, Mathf.Max(160f, availableHeight * 0.78f));
+            var x = Mathf.Max(Margin, LeftContentMaxWidth - width);
+            return new Rect(x, top + Margin, width, height);
+        }
+
         public static Rect GetLeftEyePreviewRegion(int buttonRows, float rgbPanelHeight, float maxHeightFraction)
         {
             var top = GetTopBandBottom(buttonRows, rgbPanelHeight) + Margin;

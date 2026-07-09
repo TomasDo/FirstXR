@@ -12,6 +12,9 @@ namespace Unity.XR.XREAL.Samples.VoiceCommands
         const int MaxPendingUtterances = 3;
 
         [SerializeField]
+        bool m_DisableVoiceRecognition = true;
+
+        [SerializeField]
         string m_CommandTableRelativePath = "VoiceCommands/commands_zh.json";
 
         [SerializeField]
@@ -42,6 +45,9 @@ namespace Unity.XR.XREAL.Samples.VoiceCommands
 
         void Awake()
         {
+            if (m_DisableVoiceRecognition)
+                return;
+
             if (m_MicrophoneStream == null)
                 m_MicrophoneStream = FindObjectOfType<XREALMicrophoneStream>();
             if (m_CommandBridge == null)
@@ -54,18 +60,27 @@ namespace Unity.XR.XREAL.Samples.VoiceCommands
 
         void OnEnable()
         {
+            if (m_DisableVoiceRecognition)
+                return;
+
             if (m_MicrophoneStream != null)
                 m_MicrophoneStream.OnPcmChunk += OnPcmChunk;
         }
 
         void OnDisable()
         {
+            if (m_DisableVoiceRecognition)
+                return;
+
             if (m_MicrophoneStream != null)
                 m_MicrophoneStream.OnPcmChunk -= OnPcmChunk;
         }
 
         void Start()
         {
+            if (m_DisableVoiceRecognition)
+                return;
+
             StartCoroutine(InitializeEngine());
         }
 
@@ -79,6 +94,9 @@ namespace Unity.XR.XREAL.Samples.VoiceCommands
 
         public void SetListeningEnabled(bool enabled)
         {
+            if (m_DisableVoiceRecognition)
+                return;
+
             m_ListeningEnabled = enabled;
             m_Detector?.Reset();
             m_Panel?.SetStatus(enabled ? "语音口令：聆听中" : "语音口令：已暂停");
@@ -86,6 +104,9 @@ namespace Unity.XR.XREAL.Samples.VoiceCommands
 
         public void ClearLog()
         {
+            if (m_DisableVoiceRecognition)
+                return;
+
             m_Panel?.Clear();
             m_Panel?.SetStatus("语音口令：记录已清空");
         }
@@ -164,6 +185,9 @@ namespace Unity.XR.XREAL.Samples.VoiceCommands
 
         void Update()
         {
+            if (m_DisableVoiceRecognition)
+                return;
+
             if (!TryDequeueUtterance(out var utterance))
                 return;
 
@@ -251,7 +275,7 @@ namespace Unity.XR.XREAL.Samples.VoiceCommands
 
         void OnGUI()
         {
-            if (!m_ShowBeamProPanel)
+            if (m_DisableVoiceRecognition || !m_ShowBeamProPanel)
                 return;
 
             m_Panel?.Draw();

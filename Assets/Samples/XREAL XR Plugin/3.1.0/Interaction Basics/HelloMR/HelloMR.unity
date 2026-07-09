@@ -3412,12 +3412,13 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1942998012}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b1c2d3e4f5a6478990abcdef12345678, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_StartCaptureOnAwake: 1
+  m_DisableMicrophoneStream: 1
+  m_StartCaptureOnAwake: 0
   m_UseMonophonic: 1
   m_MicVolumeFactor: 1
   m_DeleteTempRecordingOnStop: 1
@@ -3430,16 +3431,17 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1942998012}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c3d4e5f6a7b84990a1b2c3d4e5f67890, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_DisableVoiceRecognition: 1
   m_CommandTableRelativePath: VoiceCommands/commands_zh.json
   m_MicrophoneStream: {fileID: 1942998024}
   m_CommandBridge: {fileID: 1942998026}
-  m_StartWhenMicReady: 1
-  m_ShowBeamProPanel: 1
+  m_StartWhenMicReady: 0
+  m_ShowBeamProPanel: 0
 --- !u!114 &1942998026
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3447,7 +3449,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1942998012}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d4e5f6a7b8c94091b2c3d4e5f6789012, type: 3}
   m_Name: 

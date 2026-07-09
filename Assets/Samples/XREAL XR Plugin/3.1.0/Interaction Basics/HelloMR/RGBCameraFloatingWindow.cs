@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -37,41 +36,23 @@ namespace Unity.XR.XREAL.Samples
         bool m_ShowDebugOnBeamPro = true;
 
         [SerializeField]
-        int m_MaxDebugLines = 200;
-
-        [SerializeField]
         float m_WaitForEyePlugTimeoutSeconds = 45f;
 
-        [SerializeField]
-        float m_DebugPanelWidth = 920f;
-
-        [SerializeField]
-        float m_DebugPanelHeight = 520f;
-
-        [SerializeField]
-        bool m_AutoScrollLogsToBottom = true;
-
-        const float k_DebugPanelHeaderHeight = 48f;
-        const float k_DebugPanelMargin = 24f;
-        const float k_DebugPanelPadding = 12f;
-
-        Vector2 m_DebugPanelPosition = new Vector2(k_DebugPanelMargin, k_DebugPanelMargin);
-        Vector2 m_DebugScrollPosition;
-        Vector2 m_DebugDragPointerOffset;
-        bool m_DebugPanelDragging;
-        bool m_ScrollLogsToBottomNextFrame;
-        GUIStyle m_DebugLogStyle;
-        GUIStyle m_DebugHeaderStyle;
+        const float k_WaitingForFirstFrameLogIntervalSeconds = 2f;
 
         XREALRGBCameraTexture m_RGBCameraTexture;
+        GameObject m_WindowRoot;
         Material m_PreviewMaterial;
         MeshRenderer m_PreviewRenderer;
+        bool m_WindowVisible = true;
         bool m_PendingStartCapture;
         bool m_LoggedTextureInfo;
+        bool m_ReceivedFirstCameraFrame;
+        bool m_WaitingForFirstCameraFrame;
+        float m_NextWaitingForFirstFrameLogTime;
         bool m_SubscribedToCameraUpdates;
         bool m_SubscribedToPlugState;
         XREALRGBCameraPlugState m_RGBCameraPlugState = XREALRGBCameraPlugState.UNKNOWN;
-        readonly List<string> m_DebugLines = new List<string>();
 
         void OnEnable()
         {
@@ -86,6 +67,21 @@ namespace Unity.XR.XREAL.Samples
         void Start()
         {
             StartCoroutine(InitializeWhenCameraReady());
+        }
+
+        void Update()
+        {
+            if (!m_WaitingForFirstCameraFrame || m_ReceivedFirstCameraFrame)
+                return;
+
+            if (Time.realtimeSinceStartup < m_NextWaitingForFirstFrameLogTime)
+                return;
+
+            var captureState = m_RGBCameraTexture != null && m_RGBCameraTexture.IsCapturing
+                ? "native capture is running"
+                : "native capture is not running yet";
+            LogStatus($"Waiting for first RGB camera frame ({captureState}, plug={m_RGBCameraPlugState}).");
+            m_NextWaitingForFirstFrameLogTime = Time.realtimeSinceStartup + k_WaitingForFirstFrameLogIntervalSeconds;
         }
 
         void OnDestroy()
@@ -229,6 +225,7 @@ namespace Unity.XR.XREAL.Samples
         void CreateFloatingWindow(Camera camera)
         {
             var windowRoot = new GameObject("RGB Camera Window");
+            m_WindowRoot = windowRoot;
             var forward = camera.transform.forward;
             var right = camera.transform.right;
             var up = camera.transform.up;
@@ -277,6 +274,26 @@ namespace Unity.XR.XREAL.Samples
 
             m_PreviewRenderer.shadowCastingMode = ShadowCastingMode.Off;
             m_PreviewRenderer.receiveShadows = false;
+            ApplyWindowVisibility();
+        }
+
+        public bool IsWindowVisible => m_WindowVisible;
+
+        public void ToggleWindowVisible()
+        {
+            SetWindowVisible(!m_WindowVisible);
+        }
+
+        public void SetWindowVisible(bool visible)
+        {
+            m_WindowVisible = visible;
+            ApplyWindowVisibility();
+        }
+
+        void ApplyWindowVisibility()
+        {
+            if (m_WindowRoot != null)
+                m_WindowRoot.SetActive(m_WindowVisible);
         }
 
         Material CreatePreviewMaterial()
@@ -312,6 +329,7 @@ namespace Unity.XR.XREAL.Samples
             if (m_RGBCameraTexture.IsCapturing)
             {
                 LogStatus($"RGB camera already capturing (attempt {attempt}/{maxAttempts}).");
+                BeginWaitingForFirstCameraFrame();
                 return true;
             }
 
@@ -334,6 +352,7 @@ namespace Unity.XR.XREAL.Samples
             if (started)
             {
                 LogStatus("RGB camera capture started successfully.");
+                BeginWaitingForFirstCameraFrame();
                 return true;
             }
 
@@ -365,7 +384,11 @@ namespace Unity.XR.XREAL.Samples
             LogStatus($"RGB camera plug state: {state}");
 
             if (state == XREALRGBCameraPlugState.PLUGOUT)
+            {
+                m_ReceivedFirstCameraFrame = false;
+                m_WaitingForFirstCameraFrame = false;
                 StopCapture();
+            }
             else if (state == XREALRGBCameraPlugState.PLUGIN && m_RGBCameraTexture != null
                 && !m_RGBCameraTexture.IsCapturing && (m_StartCaptureOnAwake || m_PendingStartCapture))
                 StartCoroutine(StartCaptureWithRetry());
@@ -409,12 +432,28 @@ namespace Unity.XR.XREAL.Samples
             m_PreviewMaterial.SetTexture("_MainTex", yuvTextures[0]);
             m_PreviewMaterial.SetTexture("_UTex", yuvTextures[1]);
             m_PreviewMaterial.SetTexture("_VTex", yuvTextures[2]);
+
+            if (!m_ReceivedFirstCameraFrame)
+            {
+                m_ReceivedFirstCameraFrame = true;
+                m_WaitingForFirstCameraFrame = false;
+                LogStatus("First RGB camera frame displayed; hiding Beam Pro startup log overlay.");
+            }
         }
 
         public void StopCapture()
         {
             if (m_RGBCameraTexture != null && m_RGBCameraTexture.IsCapturing)
                 m_RGBCameraTexture.StopCapture();
+        }
+
+        void BeginWaitingForFirstCameraFrame()
+        {
+            if (m_ReceivedFirstCameraFrame)
+                return;
+
+            m_WaitingForFirstCameraFrame = true;
+            m_NextWaitingForFirstFrameLogTime = Time.realtimeSinceStartup;
         }
 
         void LogDeviceDiagnostics()
@@ -445,12 +484,8 @@ namespace Unity.XR.XREAL.Samples
 
         void LogStatus(string message, bool warning = false)
         {
-            var line = $"[{Time.realtimeSinceStartup:F1}s] {message}";
-            m_DebugLines.Add(line);
-            while (m_DebugLines.Count > Mathf.Max(1, m_MaxDebugLines))
-                m_DebugLines.RemoveAt(0);
-
-            m_ScrollLogsToBottomNextFrame = m_AutoScrollLogsToBottom;
+            BeamProUnifiedLogWindow.SetStatus("RGB 相机", BuildDebugText());
+            BeamProUnifiedLogWindow.AddLine("RGB 相机", message);
 
             var unityLog = $"RGBCameraFloatingWindow: {message}";
             if (warning)
@@ -464,102 +499,7 @@ namespace Unity.XR.XREAL.Samples
             if (!m_ShowDebugOnBeamPro || Application.platform != RuntimePlatform.Android)
                 return;
 
-            EnsureDebugGuiStyles();
-            var panelRect = GetDebugPanelRect();
-            HandleDebugPanelDrag(panelRect);
-
-            var previousColor = GUI.color;
-            GUI.color = new Color(0f, 0f, 0f, 0.82f);
-            GUI.Box(panelRect, GUIContent.none);
-            GUI.color = previousColor;
-
-            var headerRect = new Rect(panelRect.x, panelRect.y, panelRect.width, k_DebugPanelHeaderHeight);
-            GUI.Label(headerRect, "  RGB Debug Log (drag header)", m_DebugHeaderStyle);
-
-            var text = BuildDebugText();
-            var scrollViewRect = new Rect(
-                panelRect.x + k_DebugPanelPadding,
-                panelRect.y + k_DebugPanelHeaderHeight,
-                panelRect.width - k_DebugPanelPadding * 2f,
-                panelRect.height - k_DebugPanelHeaderHeight - k_DebugPanelPadding);
-
-            var innerWidth = scrollViewRect.width - 24f;
-            var contentHeight = m_DebugLogStyle.CalcHeight(new GUIContent(text), innerWidth);
-            contentHeight = Mathf.Max(contentHeight, scrollViewRect.height);
-            var contentRect = new Rect(0f, 0f, innerWidth, contentHeight);
-
-            if (m_ScrollLogsToBottomNextFrame)
-            {
-                m_DebugScrollPosition.y = Mathf.Max(0f, contentHeight - scrollViewRect.height);
-                m_ScrollLogsToBottomNextFrame = false;
-            }
-
-            m_DebugScrollPosition = GUI.BeginScrollView(scrollViewRect, m_DebugScrollPosition, contentRect);
-            GUI.Label(new Rect(0f, 0f, innerWidth, contentHeight), text, m_DebugLogStyle);
-            GUI.EndScrollView();
-        }
-
-        void EnsureDebugGuiStyles()
-        {
-            var fontSize = Mathf.Max(14, Screen.height / 64);
-            if (m_DebugLogStyle != null && m_DebugLogStyle.fontSize == fontSize)
-                return;
-
-            m_DebugLogStyle = new GUIStyle(GUI.skin.label)
-            {
-                alignment = TextAnchor.UpperLeft,
-                fontSize = fontSize,
-                normal = { textColor = Color.white },
-                wordWrap = true,
-                richText = false,
-                clipping = TextClipping.Overflow
-            };
-
-            m_DebugHeaderStyle = new GUIStyle(GUI.skin.label)
-            {
-                alignment = TextAnchor.MiddleLeft,
-                fontSize = fontSize,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = new Color(0.75f, 0.9f, 1f) }
-            };
-        }
-
-        Rect GetDebugPanelRect()
-        {
-            var rect = BeamProOverlayLayout.ClampRgbDebugPanelRect(
-                m_DebugPanelWidth,
-                m_DebugPanelHeight,
-                m_DebugPanelPosition);
-            m_DebugPanelPosition = rect.position;
-            return rect;
-        }
-
-        void HandleDebugPanelDrag(Rect panelRect)
-        {
-            var headerRect = new Rect(panelRect.x, panelRect.y, panelRect.width, k_DebugPanelHeaderHeight);
-            var e = Event.current;
-
-            switch (e.type)
-            {
-                case EventType.MouseDown:
-                    if (!headerRect.Contains(e.mousePosition))
-                        break;
-                    m_DebugPanelDragging = true;
-                    m_DebugDragPointerOffset = e.mousePosition - m_DebugPanelPosition;
-                    e.Use();
-                    break;
-
-                case EventType.MouseDrag:
-                    if (!m_DebugPanelDragging)
-                        break;
-                    m_DebugPanelPosition = e.mousePosition - m_DebugDragPointerOffset;
-                    e.Use();
-                    break;
-
-                case EventType.MouseUp:
-                    m_DebugPanelDragging = false;
-                    break;
-            }
+            BeamProUnifiedLogWindow.SetStatus("RGB 相机", BuildDebugText());
         }
 
         string BuildDebugText()
@@ -572,13 +512,10 @@ namespace Unity.XR.XREAL.Samples
             var permissionState = IsAndroidCameraPermissionGranted() ? "granted" : "not granted";
             var rgbFeature = XREALPlugin.IsHMDFeatureSupported(XREALSupportedFeature.XREAL_FEATURE_RGB_CAMERA);
             var deviceType = XREALPlugin.GetDeviceType();
-            var header = $"RGB Debug | Capture: {captureState} | Perm: {permissionState}\nDevice: {deviceType} | RGB feature: {rgbFeature} | Eye plug: {m_RGBCameraPlugState}";
+            return $"Capture: {captureState} | Perm: {permissionState}\nDevice: {deviceType} | RGB feature: {rgbFeature} | Eye plug: {m_RGBCameraPlugState}";
 #else
-            var header = $"RGB Camera Debug | Capture: {captureState}";
+            return $"Capture: {captureState}";
 #endif
-
-            var logs = m_DebugLines.Count > 0 ? string.Join("\n", m_DebugLines) : "No RGB camera logs yet.";
-            return $"{header}\n{logs}";
         }
     }
 }

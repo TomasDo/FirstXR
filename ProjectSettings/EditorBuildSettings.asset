@@ -5,13 +5,13 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 0
+  - enabled: 1
     path: Assets/Samples/XREAL XR Plugin/3.1.0/Interaction Basics/HelloMR/HelloMR.unity
     guid: 0c611a2881614c644b9df39be7bf8fe6
   - enabled: 0
     path: Assets/Samples/XREAL XR Plugin/3.1.0/AR Features/ImageTracking/BasicImageTracking.unity
     guid: e0b018a3c3b5cfd4c8e316706ec0a18c
-  - enabled: 1
+  - enabled: 0
     path: Assets/Samples/XREAL XR Plugin/3.1.0/MarkerTracking/MarkerTracking.unity
     guid: a7108302b70545d44899e77a8b6f9a2f
   m_configObjects:
