@@ -10,16 +10,15 @@ namespace Unity.XR.XREAL.Samples
         public const float Margin = 16f;
         public const float ColumnGap = 12f;
         public const float RightColumnWidth = 280f;
-        public const float BottomBandMaxFraction = 0.42f;
-        public const float TopBandRgbMaxHeightFraction = 0.28f;
-        public const float RightColumnMaxHeightFraction = 0.36f;
+        public const float BottomPreviewMaxFraction = 0.24f;
+        public const float RightColumnMaxHeightFraction = 0.9f;
         public const int MaxButtonRows = 9;
 
-        public static float RightColumnX => Screen.width - RightColumnWidth - Margin;
+        public static float RightColumnX => Screen.width - GetRightColumnWidth() - Margin;
 
-        public static float RightColumnReservedWidth => RightColumnWidth + Margin + ColumnGap;
+        public static float RightColumnReservedWidth => GetReservedRightWidth();
 
-        public static float LeftContentMaxWidth => Screen.width - RightColumnReservedWidth - Margin;
+        public static float LeftContentMaxWidth => Mathf.Max(120f, Screen.width - RightColumnReservedWidth - Margin);
 
         public struct RightColumnButtonLayout
         {
@@ -34,123 +33,107 @@ namespace Unity.XR.XREAL.Samples
         public static RightColumnButtonLayout ComputeRightColumnButtons(int rowCount)
         {
             rowCount = Mathf.Max(1, rowCount);
+            var width = GetRightColumnWidth();
             var layout = new RightColumnButtonLayout
             {
-                X = RightColumnX,
+                X = Screen.width - width - Margin,
                 Y = Margin,
-                Width = RightColumnWidth,
+                Width = width,
                 RowSpacing = 6f,
             };
 
-            var maxHeight = Screen.height * RightColumnMaxHeightFraction;
+            var maxHeight = Mathf.Max(120f, Screen.height * RightColumnMaxHeightFraction - Margin * 2f);
             layout.ButtonHeight = Mathf.Clamp(
                 (maxHeight - layout.RowSpacing * (rowCount - 1)) / rowCount,
-                42f,
+                28f,
                 68f);
             layout.TotalHeight = layout.ButtonHeight * rowCount + layout.RowSpacing * (rowCount - 1);
             return layout;
         }
 
-        public static float GetTopBandBottom(int buttonRows, float rgbPanelHeight)
+        public static float GetReservedRightWidth()
         {
-            var buttonLayout = ComputeRightColumnButtons(buttonRows);
-            var rgbBottom = Margin + rgbPanelHeight;
-            var buttonBottom = buttonLayout.Y + buttonLayout.TotalHeight;
-            return Mathf.Max(rgbBottom, buttonBottom) + ColumnGap;
+            return GetRightColumnWidth() + Margin + ColumnGap;
         }
 
-        public static float GetBottomBandTop(out float bottomBandHeight)
+        static float GetRightColumnWidth()
         {
-            bottomBandHeight = Screen.height * BottomBandMaxFraction;
-            return Screen.height - bottomBandHeight - Margin;
+            return Mathf.Clamp(Screen.width * 0.24f, 120f, RightColumnWidth);
+        }
+
+        public static Rect GetMainLogRect(int rightButtonRows)
+        {
+            var previewRect = GetBottomPreviewRect(rightButtonRows, BottomPreviewMaxFraction);
+            var width = Mathf.Max(120f, LeftContentMaxWidth);
+            var height = Mathf.Max(180f, previewRect.y - Margin - ColumnGap);
+            return new Rect(Margin, Margin, width, height);
+        }
+
+        public static Rect GetBottomPreviewRect(int rightButtonRows, float maxHeightFraction)
+        {
+            var maxFraction = Mathf.Clamp(maxHeightFraction, 0.12f, 0.28f);
+            var width = Mathf.Max(120f, LeftContentMaxWidth);
+            var height = Mathf.Clamp(Screen.height * maxFraction, 120f, Screen.height * 0.28f);
+            var y = Mathf.Max(Margin, Screen.height - height - Margin);
+            return new Rect(Margin, y, width, height);
         }
 
         public static float GetMiddleBandHeight(int buttonRows, float rgbPanelHeight)
         {
-            var top = GetTopBandBottom(buttonRows, rgbPanelHeight);
-            var bottom = GetBottomBandTop(out _);
-            return Mathf.Max(0f, bottom - top - Margin);
+            return GetMainLogRect(buttonRows).height;
         }
 
         public static Rect ClampRgbDebugPanelRect(float preferredWidth, float preferredHeight, Vector2 position)
         {
-            var bottomTop = GetBottomBandTop(out _);
-            var maxWidth = LeftContentMaxWidth - Margin;
-            var maxHeight = Mathf.Min(
-                bottomTop - Margin * 2f,
-                Screen.height * TopBandRgbMaxHeightFraction);
+            var mainRect = GetMainLogRect(MaxButtonRows);
+            var maxWidth = mainRect.width;
+            var maxHeight = mainRect.height;
 
-            var width = Mathf.Clamp(preferredWidth, 320f, maxWidth);
-            var height = Mathf.Clamp(preferredHeight, 160f, maxHeight);
-            var x = Mathf.Clamp(position.x, Margin, Margin + maxWidth - width);
-            var y = Mathf.Clamp(position.y, Margin, bottomTop - height - Margin);
+            var minWidth = Mathf.Min(320f, maxWidth);
+            var minHeight = Mathf.Min(160f, maxHeight);
+            var width = Mathf.Clamp(preferredWidth, minWidth, maxWidth);
+            var height = Mathf.Clamp(preferredHeight, minHeight, maxHeight);
+            var x = Mathf.Clamp(position.x, mainRect.x, mainRect.xMax - width);
+            var y = Mathf.Clamp(position.y, mainRect.y, mainRect.yMax - height);
             return new Rect(x, y, width, height);
         }
 
         public static Rect GetVoicePanelRect(int buttonRows, float rgbPanelHeight, float preferredWidth, float preferredHeight)
         {
-            var top = GetTopBandBottom(buttonRows, rgbPanelHeight);
-            var bottom = GetBottomBandTop(out _);
-            var availableHeight = bottom - top - Margin;
-
-            var width = Mathf.Min(preferredWidth, LeftContentMaxWidth * 0.52f);
-            var height = Mathf.Min(preferredHeight, Mathf.Max(120f, availableHeight * 0.62f));
-            return new Rect(Margin, top + Margin, width, height);
+            var mainRect = GetMainLogRect(buttonRows);
+            var width = Mathf.Min(preferredWidth, mainRect.width);
+            var height = Mathf.Min(preferredHeight, mainRect.height);
+            return new Rect(mainRect.x, mainRect.y, width, height);
         }
 
         public static Rect GetDentalRobotPanelRect(int buttonRows, float rgbPanelHeight, float preferredWidth, float preferredHeight)
         {
-            var top = GetTopBandBottom(buttonRows, rgbPanelHeight);
-            var bottom = GetBottomBandTop(out _);
-            var availableHeight = bottom - top - Margin;
-
-            var width = Mathf.Min(preferredWidth, LeftContentMaxWidth * 0.46f);
-            var height = Mathf.Min(preferredHeight, Mathf.Max(160f, availableHeight * 0.78f));
-            var x = Mathf.Max(Margin, LeftContentMaxWidth - width);
-            return new Rect(x, top + Margin, width, height);
+            var mainRect = GetMainLogRect(buttonRows);
+            var width = Mathf.Min(preferredWidth, mainRect.width);
+            var height = Mathf.Min(preferredHeight, mainRect.height);
+            return new Rect(mainRect.x, mainRect.y, width, height);
         }
 
         public static Rect GetLeftEyePreviewRegion(int buttonRows, float rgbPanelHeight, float maxHeightFraction)
         {
-            var top = GetTopBandBottom(buttonRows, rgbPanelHeight) + Margin;
-            var bottomTop = GetBottomBandTop(out var bottomBandHeight);
-            var maxHeight = Mathf.Min(
-                Screen.height * maxHeightFraction,
-                bottomBandHeight,
-                Screen.height - top - Margin);
-            var maxWidth = LeftContentMaxWidth - Margin;
-
-            var previewWidth = maxWidth;
-            var previewHeight = maxHeight;
-            var totalHeight = previewHeight + Margin;
-            var x = Margin + (LeftContentMaxWidth - previewWidth) * 0.5f;
-            var y = Screen.height - totalHeight - Margin;
-
-            if (y < top)
-            {
-                previewHeight = Mathf.Max(120f, Screen.height - top - Margin * 2f);
-                totalHeight = previewHeight + Margin;
-                y = Screen.height - totalHeight - Margin;
-            }
-
-            return new Rect(x, y, previewWidth, previewHeight);
+            return GetBottomPreviewRect(buttonRows, Mathf.Min(maxHeightFraction, BottomPreviewMaxFraction));
         }
 
         public static Rect GetMicrophoneOverlayRect(int buttonRows, float rgbPanelHeight)
         {
             const float width = 420f;
             const float height = 108f;
-            var bottomTop = GetBottomBandTop(out _);
-            var y = bottomTop - height - Margin;
-            return new Rect(Margin, y, Mathf.Min(width, LeftContentMaxWidth * 0.55f), height);
+            var mainRect = GetMainLogRect(buttonRows);
+            var y = mainRect.yMax - height - Margin;
+            return new Rect(mainRect.x, y, Mathf.Min(width, mainRect.width), height);
         }
 
         public static float EstimateRgbPanelHeight(float preferredHeight)
         {
             return Mathf.Min(
                 preferredHeight,
-                Screen.height * TopBandRgbMaxHeightFraction,
-                GetBottomBandTop(out _) - Margin * 2f);
+                Screen.height * BottomPreviewMaxFraction,
+                Screen.height - Margin * 2f);
         }
     }
 }

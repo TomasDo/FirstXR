@@ -217,14 +217,13 @@ namespace Unity.XR.XREAL.Samples
 
             var texture = m_PreviewTexture;
             var headerHeight = Mathf.Max(28f, Screen.height / 48f);
-            var rgbHeight = BeamProOverlayLayout.EstimateRgbPanelHeight(520f);
-            var region = BeamProOverlayLayout.GetLeftEyePreviewRegion(
+            var region = BeamProOverlayLayout.GetBottomPreviewRect(
                 BeamProOverlayLayout.MaxButtonRows,
-                rgbHeight,
                 m_MaxScreenHeightFraction);
 
-            var maxPreviewWidth = region.width;
-            var maxPreviewHeight = Mathf.Max(80f, region.height - headerHeight);
+            const float panelPadding = 8f;
+            var maxPreviewWidth = Mathf.Max(120f, region.width - panelPadding * 2f);
+            var maxPreviewHeight = Mathf.Max(80f, region.height - headerHeight - panelPadding * 2f);
 
             float previewWidth = maxPreviewWidth;
             float previewHeight = maxPreviewHeight;
@@ -237,8 +236,12 @@ namespace Unity.XR.XREAL.Samples
 
             var totalBlockHeight = headerHeight + previewHeight;
             var x = region.x + (region.width - previewWidth) * 0.5f;
-            var y = region.y + region.height - totalBlockHeight;
-            var panelRect = new Rect(x - 8f, y - 8f, previewWidth + 16f, totalBlockHeight + 8f);
+            var y = region.y + (region.height - totalBlockHeight) * 0.5f;
+            var panelRect = new Rect(
+                region.x,
+                region.y,
+                region.width,
+                region.height);
 
             var previousColor = GUI.color;
             GUI.color = new Color(0f, 0f, 0f, 0.82f);

@@ -102,12 +102,7 @@ namespace Unity.XR.XREAL.Samples
                 return;
 
             EnsureStyles();
-            var rgbHeight = BeamProOverlayLayout.EstimateRgbPanelHeight(520f);
-            var rect = BeamProOverlayLayout.GetDentalRobotPanelRect(
-                BeamProOverlayLayout.MaxButtonRows,
-                rgbHeight,
-                680f,
-                430f);
+            var rect = BeamProOverlayLayout.GetMainLogRect(BeamProOverlayLayout.MaxButtonRows);
 
             GUI.depth = 9;
             GUI.Box(rect, GUIContent.none, m_PanelStyle);
