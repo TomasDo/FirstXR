@@ -13,8 +13,7 @@ namespace Unity.XR.XREAL.Samples
         public const float BottomPreviewMaxFraction = 0.24f;
         public const float RightColumnMaxHeightFraction = 0.9f;
         public const int MaxButtonRows = 9;
-
-        public static float RightColumnX => Screen.width - GetRightColumnWidth() - Margin;
+        public const float DentalEndpointControlsHeight = 42f;
 
         public static float RightColumnReservedWidth => GetReservedRightWidth();
 
@@ -69,6 +68,16 @@ namespace Unity.XR.XREAL.Samples
             return new Rect(Margin, Margin, width, height);
         }
 
+        public static Rect GetDentalEndpointControlsRect()
+        {
+            var logRect = GetMainLogRect(MaxButtonRows);
+            return new Rect(
+                logRect.x + 10f,
+                logRect.y + 38f,
+                Mathf.Max(100f, logRect.width - 20f),
+                DentalEndpointControlsHeight);
+        }
+
         public static Rect GetBottomPreviewRect(int rightButtonRows, float maxHeightFraction)
         {
             var maxFraction = Mathf.Clamp(maxHeightFraction, 0.12f, 0.28f);
@@ -76,64 +85,6 @@ namespace Unity.XR.XREAL.Samples
             var height = Mathf.Clamp(Screen.height * maxFraction, 120f, Screen.height * 0.28f);
             var y = Mathf.Max(Margin, Screen.height - height - Margin);
             return new Rect(Margin, y, width, height);
-        }
-
-        public static float GetMiddleBandHeight(int buttonRows, float rgbPanelHeight)
-        {
-            return GetMainLogRect(buttonRows).height;
-        }
-
-        public static Rect ClampRgbDebugPanelRect(float preferredWidth, float preferredHeight, Vector2 position)
-        {
-            var mainRect = GetMainLogRect(MaxButtonRows);
-            var maxWidth = mainRect.width;
-            var maxHeight = mainRect.height;
-
-            var minWidth = Mathf.Min(320f, maxWidth);
-            var minHeight = Mathf.Min(160f, maxHeight);
-            var width = Mathf.Clamp(preferredWidth, minWidth, maxWidth);
-            var height = Mathf.Clamp(preferredHeight, minHeight, maxHeight);
-            var x = Mathf.Clamp(position.x, mainRect.x, mainRect.xMax - width);
-            var y = Mathf.Clamp(position.y, mainRect.y, mainRect.yMax - height);
-            return new Rect(x, y, width, height);
-        }
-
-        public static Rect GetVoicePanelRect(int buttonRows, float rgbPanelHeight, float preferredWidth, float preferredHeight)
-        {
-            var mainRect = GetMainLogRect(buttonRows);
-            var width = Mathf.Min(preferredWidth, mainRect.width);
-            var height = Mathf.Min(preferredHeight, mainRect.height);
-            return new Rect(mainRect.x, mainRect.y, width, height);
-        }
-
-        public static Rect GetDentalRobotPanelRect(int buttonRows, float rgbPanelHeight, float preferredWidth, float preferredHeight)
-        {
-            var mainRect = GetMainLogRect(buttonRows);
-            var width = Mathf.Min(preferredWidth, mainRect.width);
-            var height = Mathf.Min(preferredHeight, mainRect.height);
-            return new Rect(mainRect.x, mainRect.y, width, height);
-        }
-
-        public static Rect GetLeftEyePreviewRegion(int buttonRows, float rgbPanelHeight, float maxHeightFraction)
-        {
-            return GetBottomPreviewRect(buttonRows, Mathf.Min(maxHeightFraction, BottomPreviewMaxFraction));
-        }
-
-        public static Rect GetMicrophoneOverlayRect(int buttonRows, float rgbPanelHeight)
-        {
-            const float width = 420f;
-            const float height = 108f;
-            var mainRect = GetMainLogRect(buttonRows);
-            var y = mainRect.yMax - height - Margin;
-            return new Rect(mainRect.x, y, Mathf.Min(width, mainRect.width), height);
-        }
-
-        public static float EstimateRgbPanelHeight(float preferredHeight)
-        {
-            return Mathf.Min(
-                preferredHeight,
-                Screen.height * BottomPreviewMaxFraction,
-                Screen.height - Margin * 2f);
         }
     }
 }

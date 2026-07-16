@@ -21,16 +21,16 @@ namespace Unity.XR.XREAL.Samples
         float m_SearchIntervalSeconds = 5f;
 
         [SerializeField]
-        string m_ServerHost = "192.168.31.166";
+        string m_ServerHost = DentalRobotConnectionDefaults.ServerHost;
 
         [SerializeField]
-        int m_ServerPort = 50051;
+        int m_ServerPort = DentalRobotConnectionDefaults.ServerPort;
 
         [SerializeField]
-        string m_DeviceId = "beam-pro";
+        string m_DeviceId = DentalRobotConnectionDefaults.DeviceId;
 
         [SerializeField]
-        string m_DatasetId = "default";
+        string m_DatasetId = DentalRobotConnectionDefaults.DatasetId;
 
         [SerializeField]
         bool m_SendAckMessages = true;
@@ -40,6 +40,7 @@ namespace Unity.XR.XREAL.Samples
         CancellationTokenSource m_Cancellation;
         Task m_StreamTask;
         float m_NextSearchRealtime;
+        bool m_ManualSearchPending;
 
         string ServerAddress => $"http://{m_ServerHost}:{m_ServerPort}";
 
@@ -71,6 +72,13 @@ namespace Unity.XR.XREAL.Samples
             while (m_MainThreadActions.TryDequeue(out var action))
                 action?.Invoke();
 
+            if (m_ManualSearchPending && !IsStreamRunning())
+            {
+                m_ManualSearchPending = false;
+                Connect();
+                return;
+            }
+
             if (!m_ConnectOnStart || !m_AutoSearchInBackground)
                 return;
 
@@ -94,8 +102,32 @@ namespace Unity.XR.XREAL.Samples
             CleanupCompletedCancellation();
             m_Cancellation = new CancellationTokenSource();
             ScheduleNextSearch();
-            EnqueueStatus($"正在搜索/连接手术机器人 gRPC: {ServerAddress}");
-            m_StreamTask = Task.Run(() => RunStreamAsync(m_Cancellation.Token));
+            var serverAddress = ServerAddress;
+            var deviceId = m_DeviceId;
+            var datasetId = m_DatasetId;
+            var cancellationToken = m_Cancellation.Token;
+            EnqueueStatus($"正在搜索/连接手术机器人 gRPC: {serverAddress}");
+            m_StreamTask = Task.Run(() => RunStreamAsync(serverAddress, deviceId, datasetId, cancellationToken));
+        }
+
+        /// <summary>
+        /// Stops the current stream, applies a new endpoint and searches it immediately.
+        /// If cancellation is still completing, Update starts the new search as soon as it is safe.
+        /// </summary>
+        public void SearchEndpoint(string serverHost, int serverPort)
+        {
+            ConfigureEndpoint(serverHost, serverPort, m_DeviceId, m_DatasetId);
+            m_ManualSearchPending = true;
+
+            if (IsStreamRunning())
+            {
+                EnqueueStatus($"正在切换到 gRPC 服务端: {ServerAddress}");
+                Disconnect();
+                return;
+            }
+
+            m_ManualSearchPending = false;
+            Connect();
         }
 
         public void Disconnect()
@@ -108,27 +140,27 @@ namespace Unity.XR.XREAL.Samples
             m_Cancellation = null;
         }
 
-        async Task RunStreamAsync(CancellationToken cancellationToken)
+        async Task RunStreamAsync(string serverAddress, string deviceId, string datasetId, CancellationToken cancellationToken)
         {
             try
             {
                 AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
 
-                using (var channel = GrpcChannel.ForAddress(ServerAddress))
+                using (var channel = GrpcChannel.ForAddress(serverAddress))
                 {
-                    var client = new DentalModelTransfer.DentalModelTransferClient(channel);
+                    var client = new DentalModelTransfer.DentalModelTransferClient(channel.CreateCallInvoker());
                     using (var call = client.StreamDentalModel(cancellationToken: cancellationToken))
                     {
                         await call.RequestStream.WriteAsync(new ClientMessage
                         {
                             Request = new ModelRequest
                             {
-                                DeviceId = m_DeviceId,
-                                DatasetId = m_DatasetId,
+                                DeviceId = deviceId,
+                                DatasetId = datasetId,
                             }
                         }).ConfigureAwait(false);
 
-                        EnqueueStatus($"已发送模型请求 device_id={m_DeviceId}, dataset_id={m_DatasetId}");
+                        EnqueueStatus($"已发送模型请求 device_id={deviceId}, dataset_id={datasetId}");
 
                         while (await call.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
                         {

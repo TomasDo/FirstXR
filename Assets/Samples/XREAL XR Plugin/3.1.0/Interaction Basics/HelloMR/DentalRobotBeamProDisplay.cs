@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Net;
 using System.Text;
 using UnityEngine;
 
@@ -14,16 +15,16 @@ namespace Unity.XR.XREAL.Samples
         bool m_ShowOnBeamPro = true;
 
         [SerializeField]
-        string m_ServerHost = "192.168.31.166";
+        string m_ServerHost = DentalRobotConnectionDefaults.ServerHost;
 
         [SerializeField]
-        int m_ServerPort = 50051;
+        int m_ServerPort = DentalRobotConnectionDefaults.ServerPort;
 
         [SerializeField]
-        string m_DeviceId = "beam-pro";
+        string m_DeviceId = DentalRobotConnectionDefaults.DeviceId;
 
         [SerializeField]
-        string m_DatasetId = "default";
+        string m_DatasetId = DentalRobotConnectionDefaults.DatasetId;
 
         static DentalRobotBeamProDisplay s_Instance;
 
@@ -42,12 +43,15 @@ namespace Unity.XR.XREAL.Samples
         double m_Angle;
         long m_TeethBytes;
         long m_DrillBytes;
+        string m_EditableServerHost;
+        string m_EditableServerPort;
+        GUIStyle m_EndpointLabelStyle;
+        GUIStyle m_EndpointFieldStyle;
+        GUIStyle m_EndpointButtonStyle;
 
         public static DentalRobotBeamProDisplay Instance => s_Instance;
 
         public string ServerAddress => $"{m_ServerHost}:{m_ServerPort}";
-        public string DeviceId => m_DeviceId;
-        public string RequestedDatasetId => m_DatasetId;
 
         public void ConfigureEndpoint(string serverHost, int serverPort, string deviceId, string datasetId)
         {
@@ -62,6 +66,9 @@ namespace Unity.XR.XREAL.Samples
 
             if (!string.IsNullOrEmpty(datasetId))
                 m_DatasetId = datasetId;
+
+            m_EditableServerHost = m_ServerHost;
+            m_EditableServerPort = m_ServerPort.ToString();
         }
 
         void Awake()
@@ -73,6 +80,8 @@ namespace Unity.XR.XREAL.Samples
             }
 
             s_Instance = this;
+            m_EditableServerHost = m_ServerHost;
+            m_EditableServerPort = m_ServerPort.ToString();
             AppendLog($"面板已启动，等待连接 {ServerAddress}");
         }
 
@@ -104,11 +113,6 @@ namespace Unity.XR.XREAL.Samples
             AppendLog($"metadata dataset={m_LastDatasetId}, distance={m_Distance:0.###}, lateral={m_LateralDistance:0.###}, angle={m_Angle:0.###}");
             if (DentalRobotModelRenderer.Instance != null)
                 DentalRobotModelRenderer.Instance.ApplyMetadata(drillFromTeeth);
-        }
-
-        public void ApplyStlChunk(string datasetId, string modelType, string filename, long offset, int byteCount)
-        {
-            ApplyStlChunk(datasetId, modelType, filename, offset, byteCount, null);
         }
 
         public void ApplyStlChunk(string datasetId, string modelType, string filename, long offset, int byteCount, byte[] data)
@@ -165,10 +169,101 @@ namespace Unity.XR.XREAL.Samples
 
         void OnGUI()
         {
-            if (!m_ShowOnBeamPro)
+            if (!m_ShowOnBeamPro || Application.platform != RuntimePlatform.Android)
                 return;
 
             BeamProUnifiedLogWindow.SetStatus("手术机器人", BuildStatusText());
+            DrawEndpointControls();
+        }
+
+        void DrawEndpointControls()
+        {
+            EnsureEndpointStyles();
+            var rect = BeamProOverlayLayout.GetDentalEndpointControlsRect();
+            var gap = 6f;
+            var labelWidth = Mathf.Clamp(rect.width * 0.06f, 26f, 42f);
+            var portLabelWidth = Mathf.Clamp(rect.width * 0.09f, 38f, 58f);
+            var portFieldWidth = Mathf.Clamp(rect.width * 0.14f, 54f, 90f);
+            var buttonWidth = Mathf.Clamp(rect.width * 0.22f, 88f, 150f);
+            var hostFieldWidth = rect.width - labelWidth - portLabelWidth - portFieldWidth - buttonWidth - gap * 4f;
+
+            GUI.depth = 0;
+            GUI.Label(new Rect(rect.x, rect.y, labelWidth, rect.height), "IP", m_EndpointLabelStyle);
+            m_EditableServerHost = GUI.TextField(
+                new Rect(rect.x + labelWidth + gap, rect.y, Mathf.Max(60f, hostFieldWidth), rect.height),
+                m_EditableServerHost ?? string.Empty,
+                64,
+                m_EndpointFieldStyle);
+
+            var portLabelX = rect.x + labelWidth + gap + Mathf.Max(60f, hostFieldWidth) + gap;
+            GUI.Label(new Rect(portLabelX, rect.y, portLabelWidth, rect.height), "端口", m_EndpointLabelStyle);
+            m_EditableServerPort = GUI.TextField(
+                new Rect(portLabelX + portLabelWidth + gap, rect.y, portFieldWidth, rect.height),
+                m_EditableServerPort ?? string.Empty,
+                5,
+                m_EndpointFieldStyle);
+
+            var buttonX = portLabelX + portLabelWidth + gap + portFieldWidth + gap;
+            if (GUI.Button(new Rect(buttonX, rect.y, buttonWidth, rect.height), "开始搜索", m_EndpointButtonStyle))
+                StartEndpointSearch();
+        }
+
+        void StartEndpointSearch()
+        {
+            var host = (m_EditableServerHost ?? string.Empty).Trim();
+            if (!IPAddress.TryParse(host, out var address) || address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+            {
+                SetEndpointValidationError("请输入有效的 IPv4 地址。");
+                return;
+            }
+
+            if (!int.TryParse(m_EditableServerPort, out var port) || port < 1 || port > 65535)
+            {
+                SetEndpointValidationError("端口号必须在 1-65535 之间。");
+                return;
+            }
+
+            ConfigureEndpoint(host, port, m_DeviceId, m_DatasetId);
+
+            var client = FindObjectOfType<DentalRobotGrpcClient>();
+            if (client == null)
+            {
+                SetEndpointValidationError("未找到 DentalRobotGrpcClient。");
+                return;
+            }
+
+            AppendLog($"手动搜索 gRPC 服务端 {ServerAddress}");
+            client.SearchEndpoint(m_ServerHost, m_ServerPort);
+        }
+
+        void SetEndpointValidationError(string message)
+        {
+            SetConnectionStatus(message);
+        }
+
+        void EnsureEndpointStyles()
+        {
+            var fontSize = Mathf.Max(14, Screen.height / 64);
+            if (m_EndpointFieldStyle != null && m_EndpointFieldStyle.fontSize == fontSize)
+                return;
+
+            m_EndpointLabelStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                fontSize = fontSize,
+                normal = { textColor = Color.white }
+            };
+            m_EndpointFieldStyle = new GUIStyle(GUI.skin.textField)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                fontSize = fontSize
+            };
+            m_EndpointButtonStyle = new GUIStyle(GUI.skin.button)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = fontSize,
+                fontStyle = FontStyle.Bold
+            };
         }
 
         string BuildStatusText()

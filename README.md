@@ -54,12 +54,12 @@
 - 自动请求 Android `CAMERA` 权限
 - 等待 Eye 插入（PLUGIN 状态）后重试启动采集
 - 使用 YUV → RGB Shader 渲染到世界空间 Quad
-
-Beam Pro 上提供 **可拖动、可滚动** 的 RGB 调试日志面板（标题栏拖动，内容区滑动，新日志自动滚到底部）。
+- 调试状态写入 Beam Pro **统一日志窗口**（来源名：`RGB 相机`）
+- Beam Pro 右侧按钮可 **Show / Hide RGB Window**（控制世界空间预览 Quad 显隐）
 
 ### 左眼预览（Beam Pro 屏幕）
 
-`LeftEyeDisplayWindow` 将 **XR 左眼渲染输出** 镜像到 Beam Pro 手机屏幕，便于在手机上查看眼镜端 One Pro 视角。
+`LeftEyeDisplayWindow` 将 **XR 左眼渲染输出** 镜像到 Beam Pro 手机屏幕底部预览区，便于在手机上查看眼镜端 One Pro 视角。
 
 ### 参考物体
 
@@ -67,103 +67,125 @@ Beam Pro 上提供 **可拖动、可滚动** 的 RGB 调试日志面板（标题
 
 - 可选 **参考立方体**（RGB 坐标轴、六面图案、自动旋转）
 - 可选 **Check Plane**（从 StreamingAssets 加载 `check_plane.STL`）
-- 通过 Beam Pro OnGUI **Move X/Y/Z ±** 按钮平移参考物体
+- 通过 Beam Pro 右侧 **Move X/Y/Z ±** 平移；有 Check Plane 时还可调透明度与 RGB 颜色通道
+
+### 手术机器人模型（gRPC）
+
+- `DentalRobotGrpcClient` 连接手术机器人，按 `dental_model_transfer.proto` 接收 teeth / drill STL 与位姿矩阵
+- `DentalRobotModelRenderer` 在空间中锚定牙齿模型，钻头按 `drill_from_teeth` 矩阵定位（牙齿灰白、钻头黄色）
+- 连接与传输状态写入统一日志（来源名：`手术机器人`）
 
 ### 其他 UI
 
 - **Show / Hide Glasses UI**：切换眼镜端控制 Canvas 显示
 - **Vibrate**：Controller 震动测试
 
-### 语音口令（离线中文，19 条）
-
-- 词表文件：`Assets/StreamingAssets/VoiceCommands/commands_zh.json`（可单独编辑口令与 `action`）
-- 引擎：`VoiceCommandRecognizer` + Vosk 语法约束识别，麦克风来源为 `XREALMicrophoneStream`
-- Beam Pro 屏幕左侧 **「语音口令识别」** 小窗：显示识别原文、命中口令、执行状态
-- 当前口令覆盖：输入模式切换、眼镜 UI 显隐、参考物体 X/Y/Z 移动、控制器震动、追踪模式切换、暂停/继续聆听、清空口令记录
-- 首次使用如需重新生成模型清单，可在 Unity 菜单执行 **XREAL → Regenerate Vosk Model Manifest**，然后重新打 Android 包
-
 ## Beam Pro 屏幕布局与控件
 
-以下 overlay **仅在 Android 真机（Beam Pro）运行时显示**，由 `OnGUI` 绘制。默认布局（以竖屏手机为参考，自上而下）如下：
+以下 overlay **仅在 Android 真机（Beam Pro）运行时显示**，由 `OnGUI` 绘制。区域划分由 `BeamProOverlayLayout` 统一计算，避免日志、预览与右侧按钮互相遮挡。
+
+### 整体分区
+
+Beam Pro 实体屏为 **1080×2400（20:9 竖屏）**。下图按该比例与 `BeamProOverlayLayout` 的分区规则绘制（左侧内容约 **76%** 屏宽、右侧按钮列约 **24%**；主日志约占屏高 **76%**、底部左眼预览约占 **24%**）：
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ [RGB Debug Log] 左上角，可拖动                    [操作按钮列] │  ← 顶部
-│  默认 (24,24) 920×520                          右上角 280px 宽 │
-│  标题栏拖动 / 内容区滚动                        Switch / UI / Move │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  [语音口令识别] 左侧约 42% 高度处                             │
-│   520×300，黄字滚动日志                                      │
-│                                                             │
-├─────────────────────────────────────────────────────────────┤
-│              [Left Eye (One Pro view)] 底部居中              │  ← 底部
-│              左眼 XR 画面预览，约占屏高 45%                   │
-│              顶部预留约 32% 给其它 overlay                    │
-└─────────────────────────────────────────────────────────────┘
+                    Beam Pro  ·  1080 × 2400  ·  20:9 竖屏
+┌────────────────────────────────────────┬────────────────┐
+│ 16px                                   │ 16px           │
+│  ┌──────────────────────────────────┐  │ ┌────────────┐ │
+│  │ Beam Pro Logs                    │  │ │ Switch to  │ │
+│  │ (可滚动)                          │  │ │ Hand /     │ │
+│  │                                  │  │ │ Controller │ │
+│  │ [RGB 相机]                       │  │ ├────────────┤ │
+│  │  capture / 权限 / Eye plug …     │  │ │ Show/Hide  │ │
+│  │                                  │  │ │ Glasses UI │ │
+│  │ [手术机器人]                     │  │ ├────────────┤ │
+│  │  gRPC / metadata / STL …         │  │ │ Show/Hide  │ │
+│  │                                  │  │ │ RGB Window │ │
+│  │                                  │  │ ├────────────┤ │
+│  │                                  │  │ │ Move X+ X- │ │
+│  │          ≈ 76% 屏高              │  │ ├────────────┤ │
+│  │          主日志区                │  │ │ Move Y+ Y- │ │
+│  │                                  │  │ ├────────────┤ │
+│  │                                  │  │ │ Move Z+ Z- │ │
+│  │                                  │  │ ├────────────┤ │
+│  │                                  │  │ │ Trans ±10% │ │
+│  │                                  │  │ ├────────────┤ │
+│  │                                  │  │ │   R+  R-   │ │
+│  │                                  │  │ ├────────────┤ │
+│  │                                  │  │ │   G+  G-   │ │
+│  │                                  │  │ ├────────────┤ │
+│  │                                  │  │ │   B+  B-   │ │
+│  │                                  │  │ └────────────┘ │
+│  └──────────────────────────────────┘  │  ≈24% 屏宽     │
+│                 12px                   │  上限 280px    │
+│  ┌──────────────────────────────────┐  │  高 ≤90% 屏高  │
+│  │ Left Eye (One Pro view)          │  │                │
+│  │                                  │  │                │
+│  │      [XR 左眼预览画面]           │  │                │
+│  │         ≈ 24% 屏高               │  │                │
+│  └──────────────────────────────────┘  │                │
+│ 16px                                   │           16px │
+└────────────────────────────────────────┴────────────────┘
+ ←────────── ≈ 76% 屏宽 ──────────→ ←── ≈ 24% ──→
 ```
 
-各区域由不同脚本负责；可在 HelloMR 场景 `Panel` 对象上通过 Inspector 开关对应 `m_Show*OnBeamPro` 字段。
+说明：右侧按钮列与左侧主区**等高占满可用区域**（按钮从顶部向下堆叠，行高随行数自适应）；底部预览**仅占左侧栏**，不伸入右侧按钮列。
+布局常量（`BeamProOverlayLayout`）：
 
-### 1. 右上角操作按钮（`HelloMR`）
+| 常量 | 值 | 含义 |
+|------|----|------|
+| `Margin` | 16px | 屏幕外边距 |
+| `ColumnGap` | 12px | 左侧内容与右侧按钮列间距 |
+| `RightColumnWidth` | 最大 280px | 右侧按钮列宽度（约屏宽 24%，夹在 120～280） |
+| `BottomPreviewMaxFraction` | 0.24 | 底部左眼预览最大高度占比 |
+| `RightColumnMaxHeightFraction` | 0.9 | 右侧按钮列可用高度上限 |
+| `MaxButtonRows` | 9 | 布局预留的最大按钮行数 |
 
-| 控件 | 用途 |
-|------|------|
-| **Switch to Controller** / **Switch to Hand** | 在 Controller 与完整手势输入（Hands）之间切换；当前为 Hands 时按钮文案为前者，反之亦然。默认启动为 Controller。 |
-| **Show Glasses UI** / **Hide Glasses UI** | 显示或隐藏**眼镜端** Canvas 控制面板（追踪 Toggle、Hand 按钮等），不改变 Beam Pro overlay。 |
-| **Move X+ / X-** | 将参考立方体与 Check Plane 沿世界 X 轴正/负方向平移一步（`ReferenceCubeSpawner`）。 |
-| **Move Y+ / Y-** | 沿世界 Y 轴上/下平移。 |
-| **Move Z+ / Z-** | 沿世界 Z 轴前/后平移。 |
+可在 HelloMR / 各组件 Inspector 中通过 `m_Show*OnBeamPro` 等字段开关对应面板。
 
-- **位置**：距屏幕右、上边缘各约 30px，按钮宽约 280px、高约 90px，纵向堆叠。
-- **Inspector**：`Show Beam Pro Input Toggle`、`Show Beam Pro Object Move Buttons`。
+### 1. 右侧操作按钮列（`HelloMR`）
 
-### 2. RGB Debug Log（`RGBCameraFloatingWindow`）
+纵向堆叠于屏幕右侧；行高按当前行数自适应（约 28～68px）。完整时行序如下：
 
-| 项目 | 说明 |
-|------|------|
-| **用途** | 排查 XREAL Eye RGB 相机：权限、设备类型、Eye 插拔状态、采集重试与错误日志。 |
-| **位置** | 默认左上角 `(24, 24)`，面板约 **920×520**（可配置）。 |
-| **交互** | 拖动**标题栏**（`RGB Debug Log (drag header)`）移动；**内容区**可滚动；新日志默认滚到底部。 |
-| **标题行信息** | Capture 状态、Camera 权限、设备类型、RGB 功能支持、Eye plug 状态。 |
-| **Inspector** | `Show Debug On Beam Pro`、`Debug Panel Width/Height`。 |
+| 行 | 控件 | 用途 |
+|----|------|------|
+| 1 | **Switch to Controller** / **Switch to Hand** | Controller ↔ Hands 输入切换；默认启动为 Controller。 |
+| 2 | **Show Glasses UI** / **Hide Glasses UI** | 显示或隐藏**眼镜端** Canvas（追踪 Toggle 等），不影响 Beam Pro overlay。 |
+| 3 | **Show RGB Window** / **Hide RGB Window** | 显示或隐藏 MR 世界空间中的 RGB 预览 Quad（有 `RGBCameraFloatingWindow` 时出现）。 |
+| 4–6 | **Move X± / Y± / Z±** | 参考立方体与 Check Plane 沿世界轴平移一步（每行左右两个半宽按钮）。 |
+| 7–10 | **Trans ±10%**、**R± / G± / B±** | 调整 Check Plane 透明度与颜色通道（仅当场景中已有 Check Plane 时出现）。 |
 
-### 3. 语音口令识别（`VoiceCommandRecognizer`）
+- **Inspector**：`Show Beam Pro Input Toggle`、`Show Beam Pro Object Move Buttons`、`Show Beam Pro Check Plane Appearance Buttons`。
 
-| 项目 | 说明 |
-|------|------|
-| **用途** | 显示离线中文口令识别：引擎状态、识别原文、命中口令名、置信度、是否已执行。 |
-| **位置** | 屏幕**左侧**，纵向约在屏高 **42%** 处，面板 **520×300**。 |
-| **交互** | 内容区**滚动**查看历史（最多约 24 条，新记录在上方）。 |
-| **口令来源** | `Assets/StreamingAssets/VoiceCommands/commands_zh.json`（19 条，可说同义词）。 |
-| **Inspector** | `Show Beam Pro Panel`。 |
-
-与右上角按钮、语音等价的口令示例：「手势模式」「控制器模式」「显示界面」「向右」「六自由度」「暂停聆听」「清空记录」等（完整列表见词表 JSON）。
-
-### 4. 左眼预览（`LeftEyeDisplayWindow`）
+### 2. 统一日志窗口（`BeamProUnifiedLogWindow`）
 
 | 项目 | 说明 |
 |------|------|
-| **用途** | 在 Beam Pro 上镜像**眼镜 One Pro 左眼** XR 渲染，便于对照 MR 场景。 |
-| **位置** | **底部居中**；预览区最大高度约为屏高 **45%**；整体布局为屏幕上方约 **32%** 预留给其它 overlay，避免与顶部按钮/RGB 面板重叠。 |
-| **交互** | 只读画面；无拖动。右下角可显示分辨率等 `DebugInfo`；无帧时显示等待/错误文案。 |
-| **Inspector** | `Show On Beam Pro`、`Top Reserved Fraction`、`Max Screen Height Fraction`。 |
+| **用途** | Beam Pro 左侧主日志区，汇总各模块状态与滚动记录。 |
+| **位置** | `GetMainLogRect`：左上起，宽度为屏宽减去右侧列预留，高度为底部预览区之上的剩余空间。 |
+| **标题** | `Beam Pro Logs` |
+| **交互** | 内容区可滚动；每个来源最多保留约 32 条，新日志在上。 |
+| **当前来源** | **`RGB 相机`**：采集状态、权限、Eye 插拔与错误；**`手术机器人`**：gRPC 连接、metadata、STL 分块与传输结束。 |
 
-### 5. 麦克风调试条（`XREALMicrophoneStream`，默认关闭）
+RGB / 手术机器人不再各自绘制独立拖动面板，而是写入本窗口。
+
+### 3. 左眼预览（`LeftEyeDisplayWindow`）
 
 | 项目 | 说明 |
 |------|------|
-| **用途** | 显示眼镜麦 PCM 采集状态、最近块大小、累计字节、采样格式。 |
-| **位置** | **右下角**（宽约 480px）。 |
-| **Inspector** | `Show Debug Overlay On Beam Pro`（HelloMR 场景中默认为 **关闭**，避免与语音面板重复）。 |
+| **用途** | 在 Beam Pro 上镜像**眼镜 One Pro 左眼** XR 渲染。 |
+| **位置** | `GetBottomPreviewRect`：左侧内容区底部，高度约屏高 **12%～24%**（默认上限 24%）。 |
+| **交互** | 只读；右下角可显示分辨率等 `DebugInfo`；无帧时显示等待/错误文案。 |
+| **Inspector** | `Show On Beam Pro`、`Max Screen Height Fraction`。 |
 
 ### 与眼镜端 UI 的区别
 
 | 位置 | 内容 |
 |------|------|
-| **Beam Pro 手机屏** | 上文所有 OnGUI overlay（按钮、调试面板、左眼预览、语音日志）。 |
-| **XREAL 眼镜内 Canvas** | 追踪模式 Toggle（0/3/6 DoF 等）、**Controller / Hand** 按钮、当前 `Track` / `Input` 状态文字；可由 Beam Pro「Show/Hide Glasses UI」或口令控制显隐。 |
-| **MR 世界空间** | RGB 相机浮动预览 Quad（非 Beam Pro 屏幕）。 |
+| **Beam Pro 手机屏** | 右侧按钮列、统一日志、左眼预览。 |
+| **XREAL 眼镜内 Canvas** | 追踪模式 Toggle（0/3/6 DoF 等）、**Controller / Hand** 按钮、当前 `Track` / `Input` 状态文字；可由 Beam Pro「Show/Hide Glasses UI」控制显隐。 |
+| **MR 世界空间** | RGB 相机浮动预览 Quad、参考物体、手术机器人 teeth/drill 模型（非 Beam Pro 屏幕）。 |
 
 ## 构建与部署
 
@@ -174,15 +196,6 @@ Beam Pro 上提供 **可拖动、可滚动** 的 RGB 调试日志面板（标题
 | **Launch App On Android Device** | adb 安装 APK 并启动 `NRXRActivity` |
 | **Build → Android APK (Build Only, No Unity Launch)** | 仅打 APK，避免 Unity 自带启动失败 |
 | **Build → Enable / Disable Debug Build (Android)** | Development Build + Script Debugging |
-| **Setup Hand Tracking** | 为 Input Action Asset 写入 XREAL 手部绑定（需先在 Project 中选中 `.inputactions` 文件） |
-| **Download Chinese Vosk Model** | 下载中文离线语音模型到 `StreamingAssets/VoiceCommands` |
-| **Regenerate Vosk Model Manifest** | 重新生成 Android 运行时复制 Vosk 模型所需的文件清单 |
-
-手势追踪 Input 绑定目标示例：
-
-`Assets/Samples/XR Interaction Toolkit/2.6.5/Starter Assets/XRI Default Input Actions.inputactions`
-
-操作步骤：在 Project 窗口选中该文件 → **XREAL → Setup Hand Tracking**。
 
 ## 项目结构（核心）
 
@@ -191,21 +204,27 @@ Assets/
 ├── Editor/
 │   ├── XREALAndroidLaunchHelper.cs    # adb 部署与启动
 │   ├── ProjectDebugBuildSettings.cs   # Debug 构建默认选项
-│   └── VoiceCommandModelSetup.cs      # Vosk 中文模型下载与清单生成
+│   └── XREALLicenseSetup.cs           # License 文件引导（可选）
 ├── Plugins/
-│   ├── Android/arm64-v8a/libvosk.so   # Vosk Android 原生库
-│   └── Vosk/                          # Vosk C# 绑定与 asmdef
+│   ├── Android/                       # Camera / 网络权限等
+│   └── Grpc/                          # gRPC / Protobuf 运行时 DLL
 ├── StreamingAssets/
-│   └── VoiceCommands/                 # 口令表、Vosk 模型与模型文件清单
 └── Samples/XREAL XR Plugin/3.1.0/Interaction Basics/HelloMR/
     ├── HelloMR.unity                  # 主场景
-    ├── HelloMR.cs                     # 追踪/输入/UI 总控
-    ├── RGBCameraFloatingWindow.cs     # RGB 相机 + Beam Pro 日志面板
-    ├── LeftEyeDisplayWindow.cs        # Beam Pro 左眼预览
-    ├── ReferenceCubeSpawner.cs          # 参考立方体 / Check Plane
-    ├── XREALMicrophoneStream.cs         # 眼镜麦 PCM 流
-    └── VoiceCommands/                   # 离线口令识别（词表 + Vosk + Beam Pro 面板）
+    ├── HelloMR.cs                     # 追踪/输入/UI 总控 + 右侧按钮列
+    ├── BeamProOverlayLayout.cs        # Beam Pro 分区布局（日志 / 预览 / 按钮）
+    ├── BeamProUnifiedLogWindow.cs     # 统一日志窗口（RGB / 手术机器人等）
+    ├── RGBCameraFloatingWindow.cs     # RGB 相机世界空间预览 + 日志写入
+    ├── LeftEyeDisplayWindow.cs        # Beam Pro 底部左眼预览
+    ├── ReferenceCubeSpawner.cs        # 参考立方体 / Check Plane
+    ├── DentalRobotGrpcClient.cs       # 手术机器人 gRPC 客户端
+    ├── DentalRobotModelRenderer.cs    # teeth/drill STL 空间渲染
+    ├── DentalRobotBeamProDisplay.cs   # 手术机器人状态 → 统一日志
+    ├── DentalRobotConnectionDefaults.cs
+    └── DentalStlMeshUtility.cs        # 共享 STL 网格解析
 ```
+
+根目录另有 `dental_model_transfer.proto`（手术机器人模型传输协议）。
 
 ## 常见问题
 
@@ -215,17 +234,8 @@ Assets/
 **看不到双手模型**  
 需在真机运行；手部 mesh 仅在追踪成功（`isTracked`）后显示。可尝试切换到 **Hands** 输入对比；确认设备支持手部追踪且手在 RGB 相机视野内。
 
-**Setup Hand Tracking 报错**  
-须先在 Project 窗口选中 `.inputactions` 资源，再执行菜单。
-
 **RGB 相机无画面**  
-确认 XREAL Eye 已连接、Camera 权限已授予，查看 Beam Pro 上 RGB Debug Log 中的 plug 状态与 capture 日志。
-
-**语音口令面板显示模型未就绪**  
-确认 `Assets/StreamingAssets/VoiceCommands/vosk-model-small-cn-0.22/` 存在，并执行 **XREAL → Regenerate Vosk Model Manifest** 后重新打包。
-
-**语音识别误触发或漏识别**  
-优先调整 `commands_zh.json` 中的 `phrases`、`minConfidence` 与 `cooldownSeconds`；短口令建议保留 2～4 个汉字并避免发音相近。
+确认 XREAL Eye 已连接、Camera 权限已授予，查看 Beam Pro 统一日志中 **`[RGB 相机]`** 的 plug 状态与 capture 日志。
 
 ## 许可证
 

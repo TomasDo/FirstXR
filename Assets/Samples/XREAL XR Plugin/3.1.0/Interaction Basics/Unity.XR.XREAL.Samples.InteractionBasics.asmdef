@@ -7,8 +7,7 @@
         "Unity.XR.Interaction.Toolkit",
         "Unity.TextMeshPro",
         "Unity.UGUI",
-        "Unity.InputSystem",
-        "VoskPlugin"
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

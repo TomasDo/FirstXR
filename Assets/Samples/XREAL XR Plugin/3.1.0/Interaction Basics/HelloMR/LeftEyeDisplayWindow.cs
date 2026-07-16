@@ -21,13 +21,7 @@ namespace Unity.XR.XREAL.Samples
         int m_LeftEyeIndex = 0;
 
         [SerializeField]
-        float m_ScreenMargin = 16f;
-
-        [SerializeField]
         float m_MaxScreenHeightFraction = 0.45f;
-
-        [SerializeField]
-        float m_TopReservedFraction = 0.32f;
 
         [SerializeField]
         bool m_FallbackToMainCameraRender = true;

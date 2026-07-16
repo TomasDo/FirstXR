@@ -31,16 +31,16 @@ namespace Unity.XR.XREAL.Samples
         bool m_ShowDentalRobotBeamProPanel = true;
 
         [SerializeField]
-        string m_DentalRobotServerHost = "192.168.31.166";
+        string m_DentalRobotServerHost = DentalRobotConnectionDefaults.ServerHost;
 
         [SerializeField]
-        int m_DentalRobotServerPort = 50051;
+        int m_DentalRobotServerPort = DentalRobotConnectionDefaults.ServerPort;
 
         [SerializeField]
-        string m_DentalRobotDeviceId = "beam-pro";
+        string m_DentalRobotDeviceId = DentalRobotConnectionDefaults.DeviceId;
 
         [SerializeField]
-        string m_DentalRobotDatasetId = "default";
+        string m_DentalRobotDatasetId = DentalRobotConnectionDefaults.DatasetId;
 
         CanvasGroup m_GlassesControlCanvasGroup;
         ReferenceCubeSpawner m_ReferenceCubeSpawner;
@@ -174,32 +174,6 @@ namespace Unity.XR.XREAL.Samples
         {
             m_GlassesControlWindowVisible = !m_GlassesControlWindowVisible;
             ApplyGlassesControlWindowVisibility();
-        }
-
-        public void SetGlassesControlWindowVisible(bool visible)
-        {
-            m_GlassesControlWindowVisible = visible;
-            ApplyGlassesControlWindowVisibility();
-        }
-
-        public void SetTrackingMode(TrackingType trackingType)
-        {
-            _ = XREALPlugin.SwitchTrackingTypeAsync(trackingType, OnTrackingTypeChanged);
-            switch (trackingType)
-            {
-                case TrackingType.MODE_0DOF:
-                    m_Toggle0Dof.SetIsOnWithoutNotify(true);
-                    break;
-                case TrackingType.MODE_0DOF_STAB:
-                    m_Toggle0DofStable.SetIsOnWithoutNotify(true);
-                    break;
-                case TrackingType.MODE_3DOF:
-                    m_Toggle3Dof.SetIsOnWithoutNotify(true);
-                    break;
-                case TrackingType.MODE_6DOF:
-                    m_Toggle6Dof.SetIsOnWithoutNotify(true);
-                    break;
-            }
         }
 
         void ApplyDefaultInputOnStart()

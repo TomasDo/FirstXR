@@ -1,7 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.Rendering;
@@ -13,8 +10,6 @@ namespace Unity.XR.XREAL.Samples
     /// </summary>
     public class ReferenceCubeSpawner : MonoBehaviour
     {
-        public static ReferenceCubeSpawner Instance { get; private set; }
-
         [SerializeField]
         bool m_SpawnReferenceCube = false;
 
@@ -58,7 +53,7 @@ namespace Unity.XR.XREAL.Samples
         float m_CheckPlaneSizeMeters = 0.3f;
 
         [SerializeField]
-        Color m_CheckPlaneColor = new Color(0.8f, 0.9f, 1f, 1f);
+        Color m_CheckPlaneColor = new Color(0.45f, 0.45f, 0.45f, 1f);
 
         [SerializeField]
         float m_MoveStepMeters = 0.05f;
@@ -74,20 +69,9 @@ namespace Unity.XR.XREAL.Samples
         int m_CheckPlaneBlue;
         float m_CheckPlaneAlpha = 1f;
 
-        void Awake()
-        {
-            Instance = this;
-        }
-
         void Start()
         {
             StartCoroutine(SpawnWhenCameraReady());
-        }
-
-        void OnDestroy()
-        {
-            if (Instance == this)
-                Instance = null;
         }
 
         IEnumerator SpawnWhenCameraReady()
@@ -263,7 +247,7 @@ namespace Unity.XR.XREAL.Samples
             if (stlBytes == null || stlBytes.Length == 0)
                 yield break;
 
-            if (!TryCreateStlMesh(stlBytes, out var mesh))
+            if (!DentalStlMeshUtility.TryCreateMesh(stlBytes, m_CheckPlaneFileName, out var mesh))
             {
                 Debug.LogWarning($"ReferenceCubeSpawner: Could not parse STL model {m_CheckPlaneFileName}.");
                 yield break;
@@ -314,7 +298,11 @@ namespace Unity.XR.XREAL.Samples
 
         Material CreateCheckPlaneMaterial()
         {
-            return new Material(Shader.Find("Standard"));
+            var material = new Material(Shader.Find("Standard"));
+            material.SetFloat("_Metallic", 0f);
+            material.SetFloat("_Glossiness", 0.08f);
+            material.color = m_CheckPlaneColor;
+            return material;
         }
 
         void InitializeCheckPlaneAppearanceFromColor(Color color)
@@ -324,128 +312,6 @@ namespace Unity.XR.XREAL.Samples
             m_CheckPlaneBlue = Mathf.Clamp(Mathf.RoundToInt(color.b * 255f), 0, 255);
             m_CheckPlaneAlpha = Mathf.Clamp01(color.a);
             ApplyCheckPlaneAppearance();
-        }
-
-        static bool TryCreateStlMesh(byte[] data, out Mesh mesh)
-        {
-            return TryCreateBinaryStlMesh(data, out mesh) || TryCreateAsciiStlMesh(data, out mesh);
-        }
-
-        static bool TryCreateBinaryStlMesh(byte[] data, out Mesh mesh)
-        {
-            mesh = null;
-            if (data == null || data.Length < 84)
-                return false;
-
-            var rawTriangleCount = System.BitConverter.ToUInt32(data, 80);
-            if (rawTriangleCount > int.MaxValue)
-                return false;
-
-            var triangleCount = (int)rawTriangleCount;
-            var expectedLength = 84L + triangleCount * 50L;
-            if (expectedLength != data.Length || triangleCount == 0)
-                return false;
-
-            var vertices = new List<Vector3>((int)triangleCount * 3);
-            var normals = new List<Vector3>((int)triangleCount * 3);
-            var triangles = new List<int>((int)triangleCount * 3);
-            var offset = 84;
-
-            for (var i = 0; i < triangleCount; i++)
-            {
-                var normal = ReadVector3(data, offset);
-                offset += 12;
-
-                for (var vertexIndex = 0; vertexIndex < 3; vertexIndex++)
-                {
-                    vertices.Add(ReadVector3(data, offset));
-                    normals.Add(normal);
-                    triangles.Add(vertices.Count - 1);
-                    offset += 12;
-                }
-
-                offset += 2;
-            }
-
-            mesh = BuildMesh("check_plane.STL", vertices, triangles, normals);
-            return true;
-        }
-
-        static bool TryCreateAsciiStlMesh(byte[] data, out Mesh mesh)
-        {
-            mesh = null;
-            if (data == null || data.Length == 0)
-                return false;
-
-            var vertices = new List<Vector3>();
-            var triangles = new List<int>();
-            var text = Encoding.ASCII.GetString(data);
-            var lines = text.Split('\n');
-
-            foreach (var rawLine in lines)
-            {
-                var line = rawLine.Trim();
-                if (!line.StartsWith("vertex "))
-                    continue;
-
-                var parts = line.Split((char[])null, System.StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length != 4)
-                    continue;
-
-                if (!float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var x) ||
-                    !float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var y) ||
-                    !float.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var z))
-                    continue;
-
-                vertices.Add(new Vector3(x, y, z));
-                triangles.Add(vertices.Count - 1);
-            }
-
-            if (vertices.Count < 3 || vertices.Count % 3 != 0)
-                return false;
-
-            mesh = BuildMesh("check_plane.STL", vertices, triangles, null);
-            return true;
-        }
-
-        static Vector3 ReadVector3(byte[] data, int offset)
-        {
-            return new Vector3(
-                System.BitConverter.ToSingle(data, offset),
-                System.BitConverter.ToSingle(data, offset + 4),
-                System.BitConverter.ToSingle(data, offset + 8));
-        }
-
-        static Mesh BuildMesh(string meshName, List<Vector3> vertices, List<int> triangles, List<Vector3> normals)
-        {
-            var mesh = new Mesh { name = meshName };
-            if (vertices.Count > 65535)
-                mesh.indexFormat = IndexFormat.UInt32;
-
-            mesh.SetVertices(vertices);
-            mesh.SetTriangles(triangles, 0);
-
-            if (normals != null && normals.Count == vertices.Count)
-                mesh.SetNormals(normals);
-            else
-                mesh.RecalculateNormals();
-
-            mesh.RecalculateBounds();
-            CenterMesh(mesh);
-            return mesh;
-        }
-
-        static void CenterMesh(Mesh mesh)
-        {
-            var bounds = mesh.bounds;
-            var center = bounds.center;
-            var vertices = mesh.vertices;
-
-            for (var i = 0; i < vertices.Length; i++)
-                vertices[i] -= center;
-
-            mesh.vertices = vertices;
-            mesh.RecalculateBounds();
         }
 
         void CreateFacePatterns(Transform cubeTransform)

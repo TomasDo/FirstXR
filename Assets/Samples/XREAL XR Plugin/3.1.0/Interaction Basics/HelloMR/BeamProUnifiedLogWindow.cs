@@ -25,15 +25,6 @@ namespace Unity.XR.XREAL.Samples
         GUIStyle m_HeaderStyle;
         GUIStyle m_TextStyle;
 
-        public static BeamProUnifiedLogWindow Instance
-        {
-            get
-            {
-                EnsureInstance();
-                return s_Instance;
-            }
-        }
-
         public static void EnsureInstance()
         {
             if (s_Instance != null)
@@ -113,9 +104,9 @@ namespace Unity.XR.XREAL.Samples
             var text = BuildLogText();
             var contentRect = new Rect(
                 rect.x + Padding,
-                rect.y + HeaderHeight + Padding,
+                rect.y + HeaderHeight + Padding + BeamProOverlayLayout.DentalEndpointControlsHeight,
                 rect.width - Padding * 2f,
-                rect.height - HeaderHeight - Padding * 2f);
+                rect.height - HeaderHeight - Padding * 2f - BeamProOverlayLayout.DentalEndpointControlsHeight);
             var innerWidth = contentRect.width - 24f;
             var contentHeight = Mathf.Max(contentRect.height, m_TextStyle.CalcHeight(new GUIContent(text), innerWidth));
 
