@@ -11,6 +11,8 @@ namespace Unity.XR.XREAL.Samples
 {
     public class DentalRobotGrpcClient : MonoBehaviour
     {
+        static readonly TimeSpan MessageInactivityTimeout = TimeSpan.FromSeconds(30);
+
         [SerializeField]
         bool m_ConnectOnStart = true;
 
@@ -100,14 +102,15 @@ namespace Unity.XR.XREAL.Samples
                 return;
 
             CleanupCompletedCancellation();
-            m_Cancellation = new CancellationTokenSource();
+            var cancellation = new CancellationTokenSource();
+            m_Cancellation = cancellation;
             ScheduleNextSearch();
             var serverAddress = ServerAddress;
             var deviceId = m_DeviceId;
             var datasetId = m_DatasetId;
-            var cancellationToken = m_Cancellation.Token;
-            EnqueueStatus($"正在搜索/连接手术机器人 gRPC: {serverAddress}");
-            m_StreamTask = Task.Run(() => RunStreamAsync(serverAddress, deviceId, datasetId, cancellationToken));
+            var cancellationToken = cancellation.Token;
+            EnqueueLinkConnecting($"正在搜索/连接手术机器人 gRPC: {serverAddress}");
+            m_StreamTask = Task.Run(() => RunStreamAsync(serverAddress, deviceId, datasetId, cancellationToken, cancellation));
         }
 
         /// <summary>
@@ -121,7 +124,7 @@ namespace Unity.XR.XREAL.Samples
 
             if (IsStreamRunning())
             {
-                EnqueueStatus($"正在切换到 gRPC 服务端: {ServerAddress}");
+                EnqueueLinkConnecting($"正在切换到 gRPC 服务端: {ServerAddress}");
                 Disconnect();
                 return;
             }
@@ -132,15 +135,13 @@ namespace Unity.XR.XREAL.Samples
 
         public void Disconnect()
         {
-            if (m_Cancellation == null)
-                return;
-
-            m_Cancellation.Cancel();
-            m_Cancellation.Dispose();
+            var cancellation = m_Cancellation;
             m_Cancellation = null;
+            if (cancellation != null)
+                cancellation.Cancel();
         }
 
-        async Task RunStreamAsync(string serverAddress, string deviceId, string datasetId, CancellationToken cancellationToken)
+        async Task RunStreamAsync(string serverAddress, string deviceId, string datasetId, CancellationToken cancellationToken, CancellationTokenSource cancellation)
         {
             try
             {
@@ -162,8 +163,23 @@ namespace Unity.XR.XREAL.Samples
 
                         EnqueueStatus($"已发送模型请求 device_id={deviceId}, dataset_id={datasetId}");
 
-                        while (await call.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
+                        while (true)
                         {
+                            // The server pushes data unprompted; a silent endpoint would otherwise
+                            // park this task forever and block the auto-reconnect loop.
+                            var moveNext = call.ResponseStream.MoveNext(cancellationToken);
+                            var completed = await Task.WhenAny(
+                                moveNext,
+                                Task.Delay(MessageInactivityTimeout, cancellationToken)).ConfigureAwait(false);
+                            if (completed != moveNext)
+                            {
+                                EnqueueLinkLost($"{MessageInactivityTimeout.TotalSeconds:0} 秒未收到手术机器人数据，断开并稍后重试。");
+                                break;
+                            }
+
+                            if (!await moveNext.ConfigureAwait(false))
+                                break;
+
                             var message = call.ResponseStream.Current;
                             await HandleServerMessageAsync(call, message, cancellationToken).ConfigureAwait(false);
 
@@ -177,15 +193,16 @@ namespace Unity.XR.XREAL.Samples
             }
             catch (OperationCanceledException)
             {
-                EnqueueStatus("已断开手术机器人 gRPC。");
+                EnqueueLinkLost("已断开手术机器人 gRPC。");
             }
             catch (Exception ex)
             {
-                EnqueueStatus($"手术机器人 gRPC 连接失败: {ex.GetType().Name}: {ex.Message}");
+                EnqueueLinkLost($"手术机器人 gRPC 连接失败: {ex.GetType().Name}: {ex.Message}");
                 EnqueueException(ex);
             }
             finally
             {
+                cancellation.Dispose();
                 m_MainThreadActions.Enqueue(ScheduleNextSearch);
             }
         }
@@ -251,9 +268,12 @@ namespace Unity.XR.XREAL.Samples
             var matrix = metadata.DrillFromTeeth;
             m_MainThreadActions.Enqueue(() =>
             {
-                var display = DentalRobotBeamProDisplay.Instance;
-                if (display != null)
-                    display.ApplyMetadata(metadata.DatasetId, matrix, metadata.Distance, metadata.LateralDistance, metadata.Angle);
+                DentalNavigationState.EnsureInstance().ApplyMetadata(
+                    metadata.DatasetId,
+                    matrix,
+                    metadata.Distance,
+                    metadata.LateralDistance,
+                    metadata.Angle);
             });
         }
 
@@ -273,6 +293,7 @@ namespace Unity.XR.XREAL.Samples
         {
             m_MainThreadActions.Enqueue(() =>
             {
+                DentalNavigationState.EnsureInstance().NotifyModelTransfer(end.Ok, end.Message);
                 var display = DentalRobotBeamProDisplay.Instance;
                 if (display != null)
                     display.ApplyTransferEnd(end.DatasetId, end.Ok, end.Message, end.TeethBytes, end.DrillBytes);
@@ -283,6 +304,32 @@ namespace Unity.XR.XREAL.Samples
         {
             m_MainThreadActions.Enqueue(() =>
             {
+                var display = DentalRobotBeamProDisplay.Instance;
+                if (display != null)
+                    display.SetConnectionStatus(status);
+
+                Debug.Log($"DentalRobotGrpcClient: {status}");
+            });
+        }
+
+        void EnqueueLinkConnecting(string status)
+        {
+            m_MainThreadActions.Enqueue(() =>
+            {
+                DentalNavigationState.EnsureInstance().NotifyConnecting(status);
+                var display = DentalRobotBeamProDisplay.Instance;
+                if (display != null)
+                    display.SetConnectionStatus(status);
+
+                Debug.Log($"DentalRobotGrpcClient: {status}");
+            });
+        }
+
+        void EnqueueLinkLost(string status)
+        {
+            m_MainThreadActions.Enqueue(() =>
+            {
+                DentalNavigationState.EnsureInstance().NotifyDisconnected(status);
                 var display = DentalRobotBeamProDisplay.Instance;
                 if (display != null)
                     display.SetConnectionStatus(status);

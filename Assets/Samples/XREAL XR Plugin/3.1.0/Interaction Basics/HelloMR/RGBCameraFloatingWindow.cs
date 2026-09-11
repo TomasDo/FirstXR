@@ -27,7 +27,7 @@ namespace Unity.XR.XREAL.Samples
         float m_AspectRatio = 16f / 9f;
 
         [SerializeField]
-        bool m_StartCaptureOnAwake = true;
+        bool m_StartCaptureOnAwake = false;
 
         [SerializeField]
         Material m_YuvMaterialTemplate;
@@ -43,8 +43,9 @@ namespace Unity.XR.XREAL.Samples
         XREALRGBCameraTexture m_RGBCameraTexture;
         GameObject m_WindowRoot;
         Material m_PreviewMaterial;
+        Material m_FrameMaterial;
         MeshRenderer m_PreviewRenderer;
-        bool m_WindowVisible = true;
+        bool m_WindowVisible = false;
         bool m_PendingStartCapture;
         bool m_LoggedTextureInfo;
         bool m_ReceivedFirstCameraFrame;
@@ -53,6 +54,7 @@ namespace Unity.XR.XREAL.Samples
         bool m_SubscribedToCameraUpdates;
         bool m_SubscribedToPlugState;
         XREALRGBCameraPlugState m_RGBCameraPlugState = XREALRGBCameraPlugState.UNKNOWN;
+        Texture[] m_LastYuvTextures;
 
         void OnEnable()
         {
@@ -62,6 +64,7 @@ namespace Unity.XR.XREAL.Samples
         void OnDisable()
         {
             UnsubscribeFromPlugState();
+            StopAllCoroutines();
         }
 
         void Start()
@@ -87,7 +90,11 @@ namespace Unity.XR.XREAL.Samples
         void OnDestroy()
         {
             UnsubscribeFromCameraUpdates();
+            StopAllCoroutines();
             StopCapture();
+
+            if (m_FrameMaterial != null)
+                Destroy(m_FrameMaterial);
 
             if (m_PreviewMaterial != null)
                 Destroy(m_PreviewMaterial);
@@ -248,9 +255,9 @@ namespace Unity.XR.XREAL.Samples
                 Destroy(frameCollider);
 
             var frameRenderer = frameObject.GetComponent<MeshRenderer>();
-            var frameMaterial = new Material(Shader.Find("Standard"));
-            frameMaterial.color = new Color(0.08f, 0.08f, 0.08f, 1f);
-            frameRenderer.material = frameMaterial;
+            m_FrameMaterial = new Material(Shader.Find("Standard"));
+            m_FrameMaterial.color = new Color(0.08f, 0.08f, 0.08f, 1f);
+            frameRenderer.material = m_FrameMaterial;
             frameRenderer.shadowCastingMode = ShadowCastingMode.Off;
             frameRenderer.receiveShadows = false;
 
@@ -278,6 +285,22 @@ namespace Unity.XR.XREAL.Samples
         }
 
         public bool IsWindowVisible => m_WindowVisible;
+
+        public bool HasReceivedFirstFrame => m_ReceivedFirstCameraFrame;
+
+        public bool IsCapturing => m_RGBCameraTexture != null && m_RGBCameraTexture.IsCapturing;
+
+        public bool TryGetYuvTextures(out Texture y, out Texture u, out Texture v)
+        {
+            y = u = v = null;
+            if (m_LastYuvTextures == null || m_LastYuvTextures.Length < 3)
+                return false;
+
+            y = m_LastYuvTextures[0];
+            u = m_LastYuvTextures[1];
+            v = m_LastYuvTextures[2];
+            return y != null && u != null && v != null;
+        }
 
         public void ToggleWindowVisible()
         {
@@ -309,6 +332,11 @@ namespace Unity.XR.XREAL.Samples
             }
 
             return new Material(shader);
+        }
+
+        public Material CreateYuvMaterialInstance()
+        {
+            return CreatePreviewMaterial();
         }
 
         public void StartCapture()
@@ -387,6 +415,7 @@ namespace Unity.XR.XREAL.Samples
             {
                 m_ReceivedFirstCameraFrame = false;
                 m_WaitingForFirstCameraFrame = false;
+                m_LastYuvTextures = null;
                 StopCapture();
             }
             else if (state == XREALRGBCameraPlugState.PLUGIN && m_RGBCameraTexture != null
@@ -414,7 +443,7 @@ namespace Unity.XR.XREAL.Samples
 
         void OnRGBCameraFrameUpdated()
         {
-            if (m_RGBCameraTexture == null || m_PreviewMaterial == null)
+            if (this == null || m_RGBCameraTexture == null)
                 return;
 
             var yuvTextures = m_RGBCameraTexture.GetYUVFormatTextures();
@@ -428,10 +457,17 @@ namespace Unity.XR.XREAL.Samples
                 m_LoggedTextureInfo = true;
             }
 
-            m_PreviewMaterial.mainTexture = yuvTextures[0];
-            m_PreviewMaterial.SetTexture("_MainTex", yuvTextures[0]);
-            m_PreviewMaterial.SetTexture("_UTex", yuvTextures[1]);
-            m_PreviewMaterial.SetTexture("_VTex", yuvTextures[2]);
+            m_LastYuvTextures = yuvTextures;
+
+            // The window root may be deactivated by the Beam Pro Show/Hide toggle; keep the
+            // material in sync so the preview is up to date when it is shown again.
+            if (m_PreviewMaterial != null)
+            {
+                m_PreviewMaterial.mainTexture = yuvTextures[0];
+                m_PreviewMaterial.SetTexture("_MainTex", yuvTextures[0]);
+                m_PreviewMaterial.SetTexture("_UTex", yuvTextures[1]);
+                m_PreviewMaterial.SetTexture("_VTex", yuvTextures[2]);
+            }
 
             if (!m_ReceivedFirstCameraFrame)
             {
@@ -443,6 +479,7 @@ namespace Unity.XR.XREAL.Samples
 
         public void StopCapture()
         {
+            m_LastYuvTextures = null;
             if (m_RGBCameraTexture != null && m_RGBCameraTexture.IsCapturing)
                 m_RGBCameraTexture.StopCapture();
         }

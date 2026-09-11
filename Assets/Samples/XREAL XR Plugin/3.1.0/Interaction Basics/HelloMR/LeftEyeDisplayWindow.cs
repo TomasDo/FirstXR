@@ -38,6 +38,17 @@ namespace Unity.XR.XREAL.Samples
             StartCoroutine(InitializeAndCaptureLoop());
         }
 
+        void OnDisable()
+        {
+            StopAllCoroutines();
+        }
+
+        void OnEnable()
+        {
+            if (m_ArraySliceMaterial != null)
+                StartCoroutine(InitializeAndCaptureLoop());
+        }
+
         void OnDestroy()
         {
             if (m_PreviewTexture != null)
@@ -168,11 +179,17 @@ namespace Unity.XR.XREAL.Samples
 
             var previousTarget = camera.targetTexture;
             var previousEnabled = camera.enabled;
-            camera.targetTexture = m_PreviewTexture;
-            camera.enabled = true;
-            camera.Render();
-            camera.targetTexture = previousTarget;
-            camera.enabled = previousEnabled;
+            try
+            {
+                camera.targetTexture = m_PreviewTexture;
+                camera.enabled = true;
+                camera.Render();
+            }
+            finally
+            {
+                camera.targetTexture = previousTarget;
+                camera.enabled = previousEnabled;
+            }
 
             m_DebugInfo = $"Main camera fallback {width}x{height}";
             return true;
@@ -202,6 +219,38 @@ namespace Unity.XR.XREAL.Samples
         {
             var shader = Shader.Find("Hidden/XREAL/BlitTextureArraySlice");
             return shader != null ? new Material(shader) : null;
+        }
+
+        GUIStyle m_HeaderStyle;
+        GUIStyle m_InfoStyle;
+        GUIStyle m_MessageStyle;
+
+        void EnsureGuiStyles()
+        {
+            var headerHeight = Mathf.Max(28f, Screen.height / 48f);
+            if (m_HeaderStyle != null && m_HeaderStyle.fontSize == Mathf.Max(14, (int)(headerHeight * 0.45f)))
+                return;
+
+            m_HeaderStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                fontSize = Mathf.Max(14, (int)(headerHeight * 0.45f)),
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = Color.white }
+            };
+            m_InfoStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.LowerRight,
+                fontSize = Mathf.Max(12, Screen.height / 72),
+                normal = { textColor = new Color(0.85f, 0.85f, 0.85f, 0.9f) }
+            };
+            m_MessageStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = Mathf.Max(14, Screen.height / 64),
+                wordWrap = true,
+                normal = { textColor = Color.white }
+            };
         }
 
         void OnGUI()
@@ -242,43 +291,22 @@ namespace Unity.XR.XREAL.Samples
             GUI.Box(panelRect, GUIContent.none);
             GUI.color = previousColor;
 
-            var headerStyle = new GUIStyle(GUI.skin.label)
-            {
-                alignment = TextAnchor.MiddleLeft,
-                fontSize = Mathf.Max(14, (int)(headerHeight * 0.45f)),
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = Color.white }
-            };
-            GUI.Label(new Rect(x, y, previewWidth, headerHeight), "Left Eye (One Pro view)", headerStyle);
+            EnsureGuiStyles();
+            GUI.Label(new Rect(x, y, previewWidth, headerHeight), "Left Eye (One Pro view)", m_HeaderStyle);
 
             var previewRect = new Rect(x, y + headerHeight, previewWidth, previewHeight);
             if (texture != null)
             {
                 GUI.DrawTexture(previewRect, texture, ScaleMode.ScaleToFit, true);
                 if (!string.IsNullOrEmpty(m_DebugInfo))
-                {
-                    var infoStyle = new GUIStyle(GUI.skin.label)
-                    {
-                        alignment = TextAnchor.LowerRight,
-                        fontSize = Mathf.Max(12, Screen.height / 72),
-                        normal = { textColor = new Color(0.85f, 0.85f, 0.85f, 0.9f) }
-                    };
-                    GUI.Label(previewRect, m_DebugInfo, infoStyle);
-                }
+                    GUI.Label(previewRect, m_DebugInfo, m_InfoStyle);
             }
             else
             {
                 var message = string.IsNullOrEmpty(m_StatusMessage)
                     ? "Waiting for left eye frame..."
                     : m_StatusMessage;
-                var messageStyle = new GUIStyle(GUI.skin.label)
-                {
-                    alignment = TextAnchor.MiddleCenter,
-                    fontSize = Mathf.Max(14, Screen.height / 64),
-                    wordWrap = true,
-                    normal = { textColor = Color.white }
-                };
-                GUI.Label(previewRect, message, messageStyle);
+                GUI.Label(previewRect, message, m_MessageStyle);
             }
         }
     }

@@ -41,7 +41,7 @@ namespace Unity.XR.XREAL.Samples
         int m_PatternTextureSize = 128;
 
         [SerializeField]
-        bool m_SpawnCheckPlane = true;
+        bool m_SpawnCheckPlane = false;
 
         [SerializeField]
         string m_CheckPlaneFileName = "check_plane.STL";

@@ -29,36 +29,41 @@ namespace Unity.XR.XREAL.Samples
         }
 
         [SerializeField]
-        float m_DistanceMeters = 1.6f;
+        Vector3 m_HeadLockedLocalPosition = new Vector3(0.320f, -0.024f, 1.80f);
 
         [SerializeField]
-        float m_VerticalOffsetMeters = -0.15f;
+        float m_ModelMaxSizeMeters = 0.11f;
 
         [SerializeField]
-        float m_ModelMaxSizeMeters = 0.45f;
+        Color m_TeethColor = new Color(0.85f, 0.85f, 0.82f, 0.35f);
 
         [SerializeField]
-        Color m_TeethColor = new Color(0.85f, 0.85f, 0.82f, 0.9f);
+        Color m_DrillColor = new Color(0.361f, 0.882f, 1f, 1f);
 
         [SerializeField]
-        Color m_DrillColor = new Color(1f, 0.84f, 0.1f, 1f);
+        bool m_WidgetVisible = true;
 
         static DentalRobotModelRenderer s_Instance;
 
         readonly Dictionary<DentalModelType, ModelBuffer> m_Buffers = new Dictionary<DentalModelType, ModelBuffer>();
-        readonly double[] m_DrillFromTeeth = new double[16];
 
         Transform m_Root;
         Transform m_TeethTransform;
         Transform m_DrillTransform;
+        LineRenderer m_AxisLine;
         Vector3 m_TeethSceneCenter;
         float m_ModelScale = 1f;
         Material m_TeethMaterial;
         Material m_DrillMaterial;
+        Mesh m_TeethMesh;
+        Mesh m_DrillMesh;
         bool m_HasMetadata;
-        bool m_RootAnchored;
+        Matrix4x4 m_DrillMatrix = Matrix4x4.identity;
+        Camera m_Camera;
 
         public static DentalRobotModelRenderer Instance => s_Instance;
+
+        public bool WidgetVisible => m_WidgetVisible;
 
         void Awake()
         {
@@ -73,9 +78,27 @@ namespace Unity.XR.XREAL.Samples
             m_Buffers[DentalModelType.Drill] = new ModelBuffer();
         }
 
+        void OnEnable()
+        {
+            var state = DentalNavigationState.EnsureInstance();
+            state.Changed -= OnNavigationChanged;
+            state.Changed += OnNavigationChanged;
+        }
+
+        void OnDisable()
+        {
+            if (DentalNavigationState.Instance != null)
+                DentalNavigationState.Instance.Changed -= OnNavigationChanged;
+        }
+
         void Start()
         {
             StartCoroutine(CreateRootWhenCameraReady());
+        }
+
+        void LateUpdate()
+        {
+            AttachToCameraIfNeeded();
         }
 
         void OnDestroy()
@@ -83,11 +106,23 @@ namespace Unity.XR.XREAL.Samples
             if (s_Instance == this)
                 s_Instance = null;
 
+            if (DentalNavigationState.Instance != null)
+                DentalNavigationState.Instance.Changed -= OnNavigationChanged;
+
             if (m_TeethMaterial != null)
                 Destroy(m_TeethMaterial);
 
             if (m_DrillMaterial != null)
                 Destroy(m_DrillMaterial);
+
+            if (m_TeethMesh != null)
+                Destroy(m_TeethMesh);
+
+            if (m_DrillMesh != null)
+                Destroy(m_DrillMesh);
+
+            if (m_AxisLine != null && m_AxisLine.material != null)
+                Destroy(m_AxisLine.material);
         }
 
         IEnumerator CreateRootWhenCameraReady()
@@ -111,11 +146,35 @@ namespace Unity.XR.XREAL.Samples
             EnsureRoot(camera);
         }
 
+        void OnNavigationChanged(DentalNavigationSnapshot snap)
+        {
+            if (!snap.HasDrillMatrix)
+                return;
+
+            m_HasMetadata = true;
+            m_DrillMatrix = snap.DrillFromTeeth;
+            ApplyDrillTransformFromMetadata();
+        }
+
+        public void SetWidgetVisible(bool visible)
+        {
+            m_WidgetVisible = visible;
+            if (m_Root != null)
+                m_Root.gameObject.SetActive(visible);
+        }
+
         public void ApplyMetadata(IList<double> drillFromTeeth)
         {
             m_HasMetadata = drillFromTeeth != null && drillFromTeeth.Count >= 16;
-            for (var i = 0; i < m_DrillFromTeeth.Length; i++)
-                m_DrillFromTeeth[i] = m_HasMetadata ? drillFromTeeth[i] : 0d;
+            if (!m_HasMetadata)
+                return;
+
+            m_DrillMatrix = Matrix4x4.identity;
+            for (var row = 0; row < 4; row++)
+            {
+                for (var col = 0; col < 4; col++)
+                    m_DrillMatrix[row, col] = (float)drillFromTeeth[row * 4 + col];
+            }
 
             ApplyDrillTransformFromMetadata();
         }
@@ -198,30 +257,61 @@ namespace Unity.XR.XREAL.Samples
 
             EnsureRoot(XREALUtility.MainCamera != null ? XREALUtility.MainCamera : Camera.main);
             if (m_Root == null)
+            {
+                Destroy(mesh);
                 return;
+            }
 
             var target = modelType == DentalModelType.Teeth
                 ? EnsureModelObject("Dental Teeth Model", ref m_TeethTransform, GetTeethMaterial())
                 : EnsureModelObject("Dental Drill Model", ref m_DrillTransform, GetDrillMaterial());
 
             var filter = target.GetComponent<MeshFilter>();
+            var previousMesh = filter.sharedMesh;
             filter.sharedMesh = mesh;
+
+            if (modelType == DentalModelType.Teeth)
+                m_TeethMesh = mesh;
+            else
+                m_DrillMesh = mesh;
+
+            // Meshes arrive per transfer; drop the replaced one so GPU memory is not retained.
+            if (previousMesh != null && previousMesh != mesh && previousMesh != m_TeethMesh && previousMesh != m_DrillMesh)
+                Destroy(previousMesh);
 
             PlaceModel(modelType, target, mesh);
             Debug.Log($"DentalRobotModelRenderer: Displayed {modelType} STL {buffer.FileName}, bytes={bytes.Length}, vertices={mesh.vertexCount}.");
         }
 
-        void EnsureRoot(Camera camera)
+        void AttachToCameraIfNeeded()
         {
-            if (m_Root != null || camera == null)
+            var camera = XREALUtility.MainCamera != null ? XREALUtility.MainCamera : Camera.main;
+            if (camera == null)
                 return;
 
-            var root = new GameObject("Dental Robot Models");
-            var position = camera.transform.position
-                + camera.transform.forward * m_DistanceMeters
-                + camera.transform.up * m_VerticalOffsetMeters;
-            root.transform.SetPositionAndRotation(position, Quaternion.LookRotation(camera.transform.forward, camera.transform.up));
-            m_Root = root.transform;
+            EnsureRoot(camera);
+        }
+
+        void EnsureRoot(Camera camera)
+        {
+            if (camera == null)
+                return;
+
+            if (m_Root == null)
+            {
+                var root = new GameObject("Dental Nav Widget");
+                m_Root = root.transform;
+                m_Root.gameObject.SetActive(m_WidgetVisible);
+            }
+
+            if (m_Camera != camera || m_Root.parent != camera.transform)
+            {
+                m_Camera = camera;
+                m_Root.SetParent(camera.transform, false);
+            }
+
+            m_Root.localPosition = m_HeadLockedLocalPosition;
+            m_Root.localRotation = Quaternion.identity;
         }
 
         Transform EnsureModelObject(string name, ref Transform target, Material material)
@@ -232,8 +322,8 @@ namespace Unity.XR.XREAL.Samples
                 obj.transform.SetParent(m_Root, false);
                 obj.AddComponent<MeshFilter>();
                 var renderer = obj.AddComponent<MeshRenderer>();
-                renderer.shadowCastingMode = ShadowCastingMode.On;
-                renderer.receiveShadows = true;
+                renderer.shadowCastingMode = ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
                 target = obj.transform;
             }
 
@@ -250,8 +340,6 @@ namespace Unity.XR.XREAL.Samples
                 m_TeethSceneCenter = mesh.bounds.center;
                 if (m_Root != null)
                     m_Root.localScale = Vector3.one * m_ModelScale;
-
-                AnchorRootInFrontOfCamera();
             }
 
             target.localScale = Vector3.one;
@@ -262,45 +350,57 @@ namespace Unity.XR.XREAL.Samples
                 ApplyDrillTransformFromMetadata();
         }
 
-        /// <summary>
-        /// Locks the model root at a fixed world-space pose in front of the camera the moment the
-        /// teeth model is placed. Under 6DOF head tracking this keeps the teeth spatially anchored;
-        /// the drill is then positioned relative to the teeth via the drill_from_teeth matrix.
-        /// </summary>
-        void AnchorRootInFrontOfCamera()
-        {
-            if (m_RootAnchored || m_Root == null)
-                return;
-
-            var camera = XREALUtility.MainCamera != null ? XREALUtility.MainCamera : Camera.main;
-            if (camera != null)
-            {
-                var position = camera.transform.position
-                    + camera.transform.forward * m_DistanceMeters
-                    + camera.transform.up * m_VerticalOffsetMeters;
-                m_Root.SetPositionAndRotation(position, Quaternion.LookRotation(camera.transform.forward, camera.transform.up));
-            }
-
-            m_RootAnchored = true;
-        }
-
         void ApplyDrillTransformFromMetadata()
         {
             if (!m_HasMetadata || m_DrillTransform == null)
                 return;
 
-            var matrix = new Matrix4x4();
-            for (var row = 0; row < 4; row++)
+            // drill_from_teeth is row-major (see dental_model_transfer.proto); Matrix4x4 is
+            // column-major, so GetColumn(i) recovers the source rows. Row 3 holds the translation.
+            m_DrillTransform.localPosition = (Vector3)m_DrillMatrix.GetColumn(3) - m_TeethSceneCenter;
+            var forward = (Vector3)m_DrillMatrix.GetColumn(2);
+            var up = (Vector3)m_DrillMatrix.GetColumn(1);
+            if (forward.sqrMagnitude > 0.000001f && up.sqrMagnitude > 0.000001f
+                && !float.IsNaN(forward.x + forward.y + forward.z)
+                && Vector3.Angle(forward, up) > 0.01f)
+                m_DrillTransform.localRotation = Quaternion.LookRotation(forward, up);
+
+            UpdateAxisLine();
+        }
+
+        void UpdateAxisLine()
+        {
+            if (m_Root == null)
+                return;
+
+            if (m_AxisLine == null)
             {
-                for (var col = 0; col < 4; col++)
-                    matrix[row, col] = (float)m_DrillFromTeeth[row * 4 + col];
+                var obj = new GameObject("Drill Axis");
+                obj.transform.SetParent(m_Root, false);
+                m_AxisLine = obj.AddComponent<LineRenderer>();
+                m_AxisLine.useWorldSpace = false;
+                m_AxisLine.positionCount = 2;
+                m_AxisLine.widthMultiplier = 0.003f;
+                m_AxisLine.shadowCastingMode = ShadowCastingMode.Off;
+                m_AxisLine.receiveShadows = false;
+                var shader = Shader.Find("Sprites/Default");
+                if (shader == null)
+                    shader = Shader.Find("Unlit/Color");
+                if (shader != null)
+                    m_AxisLine.material = new Material(shader);
+                m_AxisLine.startColor = m_DrillColor;
+                m_AxisLine.endColor = m_DrillColor;
             }
 
-            m_DrillTransform.localPosition = (Vector3)matrix.GetColumn(3) - m_TeethSceneCenter;
-            var forward = (Vector3)matrix.GetColumn(2);
-            var up = (Vector3)matrix.GetColumn(1);
-            if (forward.sqrMagnitude > 0.000001f && up.sqrMagnitude > 0.000001f)
-                m_DrillTransform.localRotation = Quaternion.LookRotation(forward, up);
+            var origin = -m_TeethSceneCenter;
+            var direction = m_DrillTransform != null
+                ? m_DrillTransform.localRotation * Vector3.forward
+                : Vector3.forward;
+            if (direction.sqrMagnitude < 0.000001f)
+                direction = Vector3.forward;
+
+            m_AxisLine.SetPosition(0, origin);
+            m_AxisLine.SetPosition(1, origin + direction.normalized * 0.08f / Mathf.Max(0.0001f, m_ModelScale));
         }
 
         Material CreateMaterial(Color color, bool transparent)

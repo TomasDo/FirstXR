@@ -8,6 +8,9 @@ namespace Unity.XR.XREAL.Samples
 {
     public static class DentalStlMeshUtility
     {
+        const long MaxStlBytes = 512L * 1024 * 1024;
+        const int MaxTriangles = 4_000_000;
+
         public static bool TryCreateMesh(byte[] data, string meshName, out Mesh mesh, bool centerMesh = true)
         {
             return TryCreateBinaryMesh(data, meshName, centerMesh, out mesh) || TryCreateAsciiMesh(data, meshName, centerMesh, out mesh);
@@ -16,16 +19,16 @@ namespace Unity.XR.XREAL.Samples
         static bool TryCreateBinaryMesh(byte[] data, string meshName, bool centerMesh, out Mesh mesh)
         {
             mesh = null;
-            if (data == null || data.Length < 84)
+            if (data == null || data.Length < 84 || data.Length > MaxStlBytes)
                 return false;
 
             var rawTriangleCount = System.BitConverter.ToUInt32(data, 80);
-            if (rawTriangleCount > int.MaxValue)
+            if (rawTriangleCount == 0 || rawTriangleCount > MaxTriangles)
                 return false;
 
             var triangleCount = (int)rawTriangleCount;
             var expectedLength = 84L + triangleCount * 50L;
-            if (expectedLength != data.Length || triangleCount == 0)
+            if (expectedLength != data.Length)
                 return false;
 
             var vertices = new List<Vector3>(triangleCount * 3);
@@ -110,12 +113,29 @@ namespace Unity.XR.XREAL.Samples
             if (normals != null && normals.Count == vertices.Count)
                 mesh.SetNormals(normals);
             else
-                mesh.RecalculateNormals();
+                RecalculateNormalsSafe(mesh);
 
             mesh.RecalculateBounds();
             if (centerMesh)
                 CenterMesh(mesh);
             return mesh;
+        }
+
+        // STL files frequently contain zero or NaN facet normals; Unity rejects those silently
+        // and leaves the mesh with degenerate shading, so fall back to computed normals.
+        static void RecalculateNormalsSafe(Mesh mesh)
+        {
+            try
+            {
+                mesh.RecalculateNormals();
+            }
+            catch (System.ArgumentException)
+            {
+                var fallback = new Vector3[mesh.vertexCount];
+                for (var i = 0; i < fallback.Length; i++)
+                    fallback[i] = Vector3.up;
+                mesh.SetNormals(fallback);
+            }
         }
 
         static void CenterMesh(Mesh mesh)

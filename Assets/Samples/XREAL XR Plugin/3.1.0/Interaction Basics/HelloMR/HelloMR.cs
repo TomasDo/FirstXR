@@ -10,7 +10,16 @@ namespace Unity.XR.XREAL.Samples
     public class HelloMR : MonoBehaviour
     {
         [SerializeField]
-        bool m_ShowBeamProInputToggle = true;
+        bool m_EngineerMode = false;
+
+        [SerializeField]
+        bool m_HudVisibleOnStart = true;
+
+        [SerializeField]
+        bool m_NavWidgetVisibleOnStart = true;
+
+        [SerializeField]
+        bool m_ShowBeamProInputToggle = false;
 
         [SerializeField]
         bool m_DefaultToHandInput = false;
@@ -22,10 +31,10 @@ namespace Unity.XR.XREAL.Samples
         bool m_GlassesControlWindowVisible = false;
 
         [SerializeField]
-        bool m_ShowBeamProObjectMoveButtons = true;
+        bool m_ShowBeamProObjectMoveButtons = false;
 
         [SerializeField]
-        bool m_ShowBeamProCheckPlaneAppearanceButtons = true;
+        bool m_ShowBeamProCheckPlaneAppearanceButtons = false;
 
         [SerializeField]
         bool m_ShowDentalRobotBeamProPanel = true;
@@ -42,9 +51,16 @@ namespace Unity.XR.XREAL.Samples
         [SerializeField]
         string m_DentalRobotDatasetId = DentalRobotConnectionDefaults.DatasetId;
 
+        [SerializeField]
+        bool m_ShowBeamProGestureToggle = false;
+
+        [SerializeField]
+        bool m_EnableRgbGestureRecognition = false;
+
         CanvasGroup m_GlassesControlCanvasGroup;
         ReferenceCubeSpawner m_ReferenceCubeSpawner;
         RGBCameraFloatingWindow m_RGBCameraFloatingWindow;
+        RgbHandGestureRecognizer m_RgbHandGestureRecognizer;
 
         [SerializeField]
         TMP_Text m_TextCurrentMode;
@@ -59,28 +75,59 @@ namespace Unity.XR.XREAL.Samples
         [SerializeField]
         Button m_ButtonHandInput;
 
+        const string k_SwitchToControllerLabel = "Switch to Controller";
+        const string k_SwitchToHandLabel = "Switch to Hand";
+        const string k_ShowGlassesUiLabel = "Show Glasses UI";
+        const string k_HideGlassesUiLabel = "Hide Glasses UI";
+        const string k_ShowRgbWindowLabel = "Show RGB Window";
+        const string k_HideRgbWindowLabel = "Hide RGB Window";
+        const string k_ShowHudLabel = "Show HUD";
+        const string k_HideHudLabel = "Hide HUD";
+        const string k_ShowWidgetLabel = "Show Nav Widget";
+        const string k_HideWidgetLabel = "Hide Nav Widget";
+        const string k_EnableGestureLabel = "Enable Gesture";
+        const string k_DisableGestureLabel = "Disable Gesture";
+
         void Awake()
         {
             BeamProUnifiedLogWindow.EnsureInstance();
+            BeamProUnifiedLogWindow.SetVisible(m_EngineerMode);
             EnsureGlassesControlWindowReference();
             EnsureReferenceCubeSpawnerReference();
             EnsureRGBCameraFloatingWindowReference();
+            if (m_EngineerMode)
+            {
+                EnsureRgbHandGestureRecognizer();
+                if (m_RgbHandGestureRecognizer != null)
+                    m_RgbHandGestureRecognizer.SetRecognitionEnabled(m_EnableRgbGestureRecognition);
+            }
+            else if (m_RgbHandGestureRecognizer != null)
+            {
+                m_RgbHandGestureRecognizer.SetRecognitionEnabled(false);
+            }
+
             EnsureDentalRobotBeamProPanel();
+            ApplyProductSurfaceDefaults();
         }
 
         private void Start()
         {
             XREALPlugin.OnTrackingTypeChanged += OnTrackingTypeChanged;
-            m_Toggle0Dof.onValueChanged.AddListener(On0DofToggleChanged);
-            m_Toggle0DofStable.onValueChanged.AddListener(On0DofStableToggleChanged);
-            m_Toggle3Dof.onValueChanged.AddListener(On3DofToggleChanged);
-            m_Toggle6Dof.onValueChanged.AddListener(On6DofToggleChanged);
+            if (m_Toggle0Dof != null)
+                m_Toggle0Dof.onValueChanged.AddListener(On0DofToggleChanged);
+            if (m_Toggle0DofStable != null)
+                m_Toggle0DofStable.onValueChanged.AddListener(On0DofStableToggleChanged);
+            if (m_Toggle3Dof != null)
+                m_Toggle3Dof.onValueChanged.AddListener(On3DofToggleChanged);
+            if (m_Toggle6Dof != null)
+                m_Toggle6Dof.onValueChanged.AddListener(On6DofToggleChanged);
 
             InitDofUI();
             ApplyDefaultInputOnStart();
             ApplyGlassesControlWindowVisibility();
             RefreshStatusText();
-            m_ButtonHandInput.interactable = XREALPlugin.IsHMDFeatureSupported(XREALSupportedFeature.XREAL_FEATURE_PERCEPTION_HEAD_TRACKING_POSITION);
+            if (m_ButtonHandInput != null)
+                m_ButtonHandInput.interactable = XREALPlugin.IsHMDFeatureSupported(XREALSupportedFeature.XREAL_FEATURE_PERCEPTION_HEAD_TRACKING_POSITION);
         }
 
         void EnsureGlassesControlWindowReference()
@@ -105,16 +152,36 @@ namespace Unity.XR.XREAL.Samples
                 m_RGBCameraFloatingWindow = FindObjectOfType<RGBCameraFloatingWindow>();
         }
 
+        void EnsureRgbHandGestureRecognizer()
+        {
+            if (m_RgbHandGestureRecognizer == null)
+                m_RgbHandGestureRecognizer = FindObjectOfType<RgbHandGestureRecognizer>();
+
+            if (m_RgbHandGestureRecognizer == null)
+            {
+                var go = new GameObject("RGB Hand Gesture Recognizer");
+                m_RgbHandGestureRecognizer = go.AddComponent<RgbHandGestureRecognizer>();
+            }
+        }
+
         void EnsureDentalRobotBeamProPanel()
         {
             if (!m_ShowDentalRobotBeamProPanel)
                 return;
+
+            DentalNavigationState.EnsureInstance();
+            DentalHudController.EnsureInstance();
+            DentalHudController.Instance.SetHudVisible(m_HudVisibleOnStart);
+            DentalHudController.Instance.SetWidgetFrameVisible(m_NavWidgetVisibleOnStart);
 
             if (FindObjectOfType<DentalRobotModelRenderer>() == null)
             {
                 var renderer = new GameObject("Dental Robot Model Renderer");
                 renderer.AddComponent<DentalRobotModelRenderer>();
             }
+
+            if (DentalRobotModelRenderer.Instance != null)
+                DentalRobotModelRenderer.Instance.SetWidgetVisible(m_NavWidgetVisibleOnStart);
 
             var existingClient = FindObjectOfType<DentalRobotGrpcClient>();
             if (existingClient != null)
@@ -152,6 +219,16 @@ namespace Unity.XR.XREAL.Samples
                 m_DentalRobotServerPort,
                 m_DentalRobotDeviceId,
                 m_DentalRobotDatasetId);
+        }
+
+        void ApplyProductSurfaceDefaults()
+        {
+            if (m_EngineerMode)
+                return;
+
+            EnsureRGBCameraFloatingWindowReference();
+            if (m_RGBCameraFloatingWindow != null)
+                m_RGBCameraFloatingWindow.SetWindowVisible(false);
         }
 
         void ApplyGlassesControlWindowVisibility()
@@ -195,10 +272,14 @@ namespace Unity.XR.XREAL.Samples
         private void OnDestroy()
         {
             XREALPlugin.OnTrackingTypeChanged -= OnTrackingTypeChanged;
-            m_Toggle0Dof.onValueChanged.RemoveListener(On0DofToggleChanged);
-            m_Toggle0DofStable.onValueChanged.RemoveListener(On0DofStableToggleChanged);
-            m_Toggle3Dof.onValueChanged.RemoveListener(On3DofToggleChanged);
-            m_Toggle6Dof.onValueChanged.RemoveListener(On6DofToggleChanged);
+            if (m_Toggle0Dof != null)
+                m_Toggle0Dof.onValueChanged.RemoveListener(On0DofToggleChanged);
+            if (m_Toggle0DofStable != null)
+                m_Toggle0DofStable.onValueChanged.RemoveListener(On0DofStableToggleChanged);
+            if (m_Toggle3Dof != null)
+                m_Toggle3Dof.onValueChanged.RemoveListener(On3DofToggleChanged);
+            if (m_Toggle6Dof != null)
+                m_Toggle6Dof.onValueChanged.RemoveListener(On6DofToggleChanged);
         }
 
         private void InitDofUI()
@@ -206,16 +287,20 @@ namespace Unity.XR.XREAL.Samples
             switch (XREALPlugin.GetTrackingType())
             {
                 case TrackingType.MODE_0DOF:
-                    m_Toggle0Dof.SetIsOnWithoutNotify(true);
+                    if (m_Toggle0Dof != null)
+                        m_Toggle0Dof.SetIsOnWithoutNotify(true);
                     break;
                 case TrackingType.MODE_0DOF_STAB:
-                    m_Toggle0DofStable.SetIsOnWithoutNotify(true);
+                    if (m_Toggle0DofStable != null)
+                        m_Toggle0DofStable.SetIsOnWithoutNotify(true);
                     break;
                 case TrackingType.MODE_3DOF:
-                    m_Toggle3Dof.SetIsOnWithoutNotify(true);
+                    if (m_Toggle3Dof != null)
+                        m_Toggle3Dof.SetIsOnWithoutNotify(true);
                     break;
                 case TrackingType.MODE_6DOF:
-                    m_Toggle6Dof.SetIsOnWithoutNotify(true);
+                    if (m_Toggle6Dof != null)
+                        m_Toggle6Dof.SetIsOnWithoutNotify(true);
                     break;
             }
         }
@@ -274,7 +359,7 @@ namespace Unity.XR.XREAL.Samples
 
         void OnGUI()
         {
-            if (!m_ShowBeamProInputToggle || Application.platform != RuntimePlatform.Android)
+            if (Application.platform != RuntimePlatform.Android)
                 return;
 
             var rowCount = CountRightColumnButtonRows();
@@ -285,10 +370,33 @@ namespace Unity.XR.XREAL.Samples
             var height = buttonLayout.ButtonHeight;
             var rowSpacing = buttonLayout.RowSpacing;
 
-            bool isHandControl = XREALPlugin.GetInputSource() == InputSource.Hands;
-            string inputLabel = isHandControl ? "Switch to Controller" : "Switch to Hand";
+            var hud = DentalHudController.Instance;
+            var hudVisible = hud == null || hud.HudVisible;
+            if (GUI.Button(new Rect(x, y, width, height), hudVisible ? k_HideHudLabel : k_ShowHudLabel))
+            {
+                hud = DentalHudController.EnsureInstance();
+                hud.SetHudVisible(!hudVisible);
+            }
 
-            if (GUI.Button(new Rect(x, y, width, height), inputLabel))
+            y += height + rowSpacing;
+            var widgetVisible = DentalRobotModelRenderer.Instance == null || DentalRobotModelRenderer.Instance.WidgetVisible;
+            if (GUI.Button(new Rect(x, y, width, height), widgetVisible ? k_HideWidgetLabel : k_ShowWidgetLabel))
+            {
+                var next = !widgetVisible;
+                if (DentalRobotModelRenderer.Instance != null)
+                    DentalRobotModelRenderer.Instance.SetWidgetVisible(next);
+                if (DentalHudController.Instance != null)
+                    DentalHudController.Instance.SetWidgetFrameVisible(next);
+            }
+
+            y += height + rowSpacing;
+            if (!m_EngineerMode)
+                return;
+
+            bool isHandControl = XREALPlugin.GetInputSource() == InputSource.Hands;
+            string inputLabel = isHandControl ? k_SwitchToControllerLabel : k_SwitchToHandLabel;
+
+            if (m_ShowBeamProInputToggle && GUI.Button(new Rect(x, y, width, height), inputLabel))
             {
                 if (isHandControl)
                     ChangeToControllerInput();
@@ -296,8 +404,10 @@ namespace Unity.XR.XREAL.Samples
                     ChangeToHandInput();
             }
 
-            y += height + rowSpacing;
-            string uiLabel = m_GlassesControlWindowVisible ? "Hide Glasses UI" : "Show Glasses UI";
+            if (m_ShowBeamProInputToggle)
+                y += height + rowSpacing;
+
+            string uiLabel = m_GlassesControlWindowVisible ? k_HideGlassesUiLabel : k_ShowGlassesUiLabel;
             if (GUI.Button(new Rect(x, y, width, height), uiLabel))
                 ToggleGlassesControlWindow();
 
@@ -305,9 +415,25 @@ namespace Unity.XR.XREAL.Samples
             if (m_RGBCameraFloatingWindow != null)
             {
                 y += height + rowSpacing;
-                string rgbLabel = m_RGBCameraFloatingWindow.IsWindowVisible ? "Hide RGB Window" : "Show RGB Window";
+                string rgbLabel = m_RGBCameraFloatingWindow.IsWindowVisible ? k_HideRgbWindowLabel : k_ShowRgbWindowLabel;
                 if (GUI.Button(new Rect(x, y, width, height), rgbLabel))
                     m_RGBCameraFloatingWindow.ToggleWindowVisible();
+            }
+
+            if (m_ShowBeamProGestureToggle)
+            {
+                EnsureRgbHandGestureRecognizer();
+                y += height + rowSpacing;
+                var gestureOn = m_RgbHandGestureRecognizer != null && m_RgbHandGestureRecognizer.RecognitionEnabled;
+                var gestureLabel = gestureOn ? k_DisableGestureLabel : k_EnableGestureLabel;
+                if (GUI.Button(new Rect(x, y, width, height), gestureLabel))
+                {
+                    if (m_RgbHandGestureRecognizer != null)
+                    {
+                        m_RgbHandGestureRecognizer.ToggleRecognitionEnabled();
+                        m_EnableRgbGestureRecognition = m_RgbHandGestureRecognizer.RecognitionEnabled;
+                    }
+                }
             }
 
             if (!m_ShowBeamProObjectMoveButtons)
@@ -325,8 +451,18 @@ namespace Unity.XR.XREAL.Samples
         int CountRightColumnButtonRows()
         {
             var rows = 2;
+            if (!m_EngineerMode)
+                return rows;
+
+            if (m_ShowBeamProInputToggle)
+                rows += 1;
+
+            rows += 1;
             EnsureRGBCameraFloatingWindowReference();
             if (m_RGBCameraFloatingWindow != null)
+                rows += 1;
+
+            if (m_ShowBeamProGestureToggle)
                 rows += 1;
 
             if (m_ShowBeamProObjectMoveButtons)

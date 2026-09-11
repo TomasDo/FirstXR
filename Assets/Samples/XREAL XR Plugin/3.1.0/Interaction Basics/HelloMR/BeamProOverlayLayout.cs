@@ -12,7 +12,7 @@ namespace Unity.XR.XREAL.Samples
         public const float RightColumnWidth = 280f;
         public const float BottomPreviewMaxFraction = 0.24f;
         public const float RightColumnMaxHeightFraction = 0.9f;
-        public const int MaxButtonRows = 9;
+        public const int MaxButtonRows = 11;
         public const float DentalEndpointControlsHeight = 42f;
 
         public static float RightColumnReservedWidth => GetReservedRightWidth();

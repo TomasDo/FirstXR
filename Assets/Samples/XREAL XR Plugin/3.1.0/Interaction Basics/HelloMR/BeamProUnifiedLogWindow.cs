@@ -25,6 +25,15 @@ namespace Unity.XR.XREAL.Samples
         GUIStyle m_HeaderStyle;
         GUIStyle m_TextStyle;
 
+        static bool s_Visible;
+
+        public static bool IsVisible => s_Visible;
+
+        public static void SetVisible(bool visible)
+        {
+            s_Visible = visible;
+        }
+
         public static void EnsureInstance()
         {
             if (s_Instance != null)
@@ -89,7 +98,7 @@ namespace Unity.XR.XREAL.Samples
 
         void OnGUI()
         {
-            if (Application.platform != RuntimePlatform.Android)
+            if (!s_Visible || Application.platform != RuntimePlatform.Android)
                 return;
 
             EnsureStyles();

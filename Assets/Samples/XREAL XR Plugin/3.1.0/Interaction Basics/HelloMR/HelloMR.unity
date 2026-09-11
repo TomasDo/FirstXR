@@ -3235,7 +3235,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0319b654e0ccbd4499f15afde34faabb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_ShowBeamProInputToggle: 1
+  m_ShowBeamProInputToggle: 0
   m_DefaultToHandInput: 0
   m_GlassesControlWindow: {fileID: 1279313422}
   m_GlassesControlWindowVisible: 0
@@ -3267,7 +3267,7 @@ MonoBehaviour:
   m_RotationDegreesPerAxis: 360
   m_DrawFacePatterns: 1
   m_PatternTextureSize: 128
-  m_SpawnCheckPlane: 1
+  m_SpawnCheckPlane: 0
   m_CheckPlaneFileName: check_plane.STL
   m_CheckPlaneRightGapMeters: 0.2
   m_CheckPlaneSizeMeters: 0.3
@@ -3289,7 +3289,7 @@ MonoBehaviour:
   m_HorizontalOffsetMeters: -0.55
   m_WidthMeters: 1.26
   m_AspectRatio: 1.7777778
-  m_StartCaptureOnAwake: 1
+  m_StartCaptureOnAwake: 0
   m_YuvMaterialTemplate: {fileID: 2100000, guid: bbd448ddc4cd0cb42a5f809e967a4477, type: 2}
 --- !u!114 &1942998022
 MonoBehaviour:
