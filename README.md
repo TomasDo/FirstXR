@@ -1,6 +1,8 @@
 # First XR
 
-基于 **XREAL XR Plugin 3.1.0** 的 Unity MR 项目，主场景为 **HelloMR**。在 XREAL 眼镜（如 One Pro）与 **Beam Pro** 联机运行时，作为手术机器人的导航 HUD：医生低头看患者时，眼镜下沿显示剩余深度 / 侧偏 / 轴向偏差；Beam Pro 作为助手台镜像同一组状态。gRPC 同时接收 teeth / drill STL，以头锁定小脑图显示。RGB 预览、手势识别与参考物体默认关闭，可在 Inspector 打开 **Engineer Mode** 恢复。
+基于 **Unity 2022.3.62f3c1** 与 **XREAL XR Plugin 3.1.0** 的口腔种植导航客户端，主场景为 **HelloMR**。医生低头观察术野时，XREAL 视野下方同时显示 CT 横断切片、固定颊舌/近远中方向的圆形靶标、横向与角度偏差方向、量化数值和竖向深度尺。Beam Pro 显示相同导航状态及真实 XR 左眼画面，导航软件可按需打开医生 RGB 视角。
+
+当前实现对应 `dental_model_transfer.proto` v2：导航/控制、DICOM/STL 资产、媒体分别走独立通道。v1 服务仍可连接，但缺少方向、阈值或 CT 时界面会明确显示能力缺失，不会从旧标量猜测完整导航。协议和联调细节见 [`Docs/DentalNavigationV2Interface.md`](Docs/DentalNavigationV2Interface.md)。
 
 ## 环境要求
 
@@ -9,10 +11,10 @@
 | Unity | 2022.3 LTS（与 XREAL Plugin 要求一致） |
 | 平台 | Android（`minSdk 29`） |
 | 硬件 | XREAL 眼镜 + Beam Pro（或支持 adb 的 Android 设备） |
-| 可选 | XREAL Eye（RGB 相机模块，用于实时 RGB 预览与 RGB 手势识别） |
+| 硬件 | XREAL Eye（离线 OK 手势与按需 RGB 回传需要） |
 | 可选 | 手术机器人 gRPC 服务端（默认 `192.168.31.166:50051`） |
 
-主要依赖：`com.xreal.xr`、`com.unity.xr.hands`、`com.unity.xr.interaction.toolkit`、`com.unity.xr.arfoundation`，以及 `Assets/Plugins/Grpc/` 下的 gRPC / Protobuf 运行时。
+主要依赖：`com.xreal.xr`、`com.unity.xr.hands`、`com.unity.xr.interaction.toolkit`、`com.unity.xr.arfoundation`、固定版本 `com.google.mediapipe:tasks-vision:1.0.0`，以及 `Assets/Plugins/Grpc/` 下的 gRPC / Protobuf 运行时。MediaPipe 模型随 APK 打包，运行时不访问网络。
 
 Android 权限（`Assets/Plugins/Android/CameraPermission.androidlib/AndroidManifest.xml`）：
 
@@ -30,6 +32,16 @@ Android 权限（`Assets/Plugins/Android/CameraPermission.androidlib/AndroidMani
    - **File → Build And Run**（若 Unity 启动报 NullReferenceException，APK 通常已成功生成，见下方「构建与部署」）
    - 或菜单 **XREAL → Build → Android APK (Build Only, No Unity Launch)**，再 **XREAL → Launch App On Android Device**
 
+没有导航软件时，可先运行确定性 v2 模拟服务：
+
+```bash
+cd Tools/navigation-simulator
+npm install
+npm start -- --port 50051 --dicom-dir /absolute/path/to/explicit-vr-dicom
+```
+
+模拟器不会替代 Beam Pro + XREAL + 牙模验收；它用于协议、方向、阈值、失效和切片控制回放。
+
 ## 功能概览
 
 ### 手术导航 HUD（产品默认）
@@ -38,18 +50,18 @@ Android 权限（`Assets/Plugins/Android/CameraPermission.androidlib/AndroidMani
 
 | 块 | 内容 |
 |---|---|
-| A 状态胶囊 | 连接点、dataset、数据年龄 |
-| B 告警 | 仅在未连接 / 数据中断 / 过目标 / 超差时出现 |
-| C 外框 | 对齐头锁定小脑图的镂空框 |
-| D 剩余深度 | `ModelMetadata.distance`（默认按米→mm） |
-| E 通道靶心 | 侧偏点只沿竖直轴移动（协议无方向） |
-| F 轴向偏差 | `ModelMetadata.angle`（默认按度） |
+| 状态 | 病例/牙位/钻针/步骤、连接状态和导航数据年龄 |
+| CT 靶标 | CT 切片、固定“上颊/下舌/左近中/右远中”、参考圆和规划中心 |
+| 位置偏差 | 实心点显示二维方向；颜色只反映位置阈值；数字显示总量与解剖方向 |
+| 角度偏差 | 外环颜色只反映角度阈值；空心三角显示倾斜方向，零角度隐藏 |
+| 深度尺 | 入点为零、当前指针、目标线、超深区；剩余深度最突出 |
+| 告警 | 每个异常通道独立报告，正常项不能掩盖异常项 |
 
-`DentalNavigationState` 是总线：gRPC metadata 写入后，HUD 每帧 `Capture` + `DentalNavigationBand` 评估阈值。过期规则：≤0.20s 正常；0.20–0.50s 显示年龄；0.50–1.00s 变灰并告警；>1.00s 或断流显示 `—`，禁止残留绿色。
+`DentalNavigationState` 是状态总线：客户端只消费当前上下文的最新序号帧。≤200ms 为实时，200–500ms 撤下有效颜色并提示延迟，>500ms 或明确断流隐藏动态标记与数值。静态 CT 可保留并显示状态。
 
-侧偏默认绿 ≤0.50mm、红 >1.00mm；角度绿 ≤2°、红 >5°；深度过目标为红，≤1mm 琥珀，更大为中性（不刷绿）。单位可在 `DentalNavigationState` Inspector 调整；真机第一帧数字若差约 1000 倍，把 `Distance To Millimeters` 改为 `1`。
+颜色阈值、边界规则与滞回参数全部由导航端按上下文版本下发。阈值缺失时显示“阈值未同步”，不会套用客户端临床默认值。协议距离固定为 mm、角度固定为 °；数值显示一位小数，判定使用原始精度。
 
-头锁定小脑图（`DentalRobotModelRenderer`）挂在相机本地 `(0.320, -0.024, 1.80)`，外接球约 0.11m，牙半透明、针青色，按 `drill_from_teeth` 摆位。这是导航小窗，**不是**配准到真牙上的叠加。
+三维模型是独立头锁定观察窗口，种植时默认隐藏；导航端可独立移动、显隐并恢复默认位置。它是观察窗口，不表示配准到真牙上的叠加。
 
 Beam Pro 右侧默认两键：**Show/Hide HUD**、**Show/Hide Nav Widget**。HelloMR 勾选 **Engineer Mode** 后恢复调试按钮与统一日志。
 
@@ -84,37 +96,36 @@ Beam Pro 右侧默认两键：**Show/Hide HUD**、**Show/Hide Nav Widget**。Hel
 - 使用 YUV → RGB Shader 渲染到世界空间 Quad
 - 调试状态写入 Beam Pro 日志（来源名：`RGB 相机`；仅 Engineer Mode 显示日志窗）
 
-### RGB 手势识别（张开 / 握拳 / 捏合）
+### 离线 OK 手势切片
 
-`RgbHandGestureRecognizer` 从 **同一路 XREAL Eye RGB 画面**（不另开摄像头）识别 3 种手势。**产品默认关闭。**
+`RgbHandGestureRecognizer` 使用随 APK 打包的 MediaPipe Hand Landmarker，从共享的 XREAL Eye RGB 帧提取 21 个手部关键点，图像与关键点不上传。手势采集与 RGB 回传共用一个相机服务；关闭 RGB 回传不会关闭手势采集。
 
 | 手势 | 中文 | 判定 |
 |------|------|------|
-| `OpenPalm` | 张开 | 多数手指伸直（凸缺陷 / 指尖峰较多） |
-| `Fist` | 握拳 | 手指收拢，轮廓较圆、较紧致 |
-| `Pinch` | 捏合 | 拇指与食指靠近（两峰接近，或轮廓内有孔） |
-| `None` | 无 | 未稳定检测到手 |
+| `Ok` | OK | 拇指与食指闭合，至少两根其余手指伸展 |
+| `None` | 无 | 未检测到有效 OK 手势或置信度不足 |
 
 实现要点：
 
-- 复用 `RGBCameraFloatingWindow` 已采集的 YUV 纹理，Blit 到 160×90 后 `AsyncGPUReadback`
-- CPU 上做肤色分割、最大连通域、轮廓与凸缺陷分类（未引入 MediaPipe / Sentis，无需下载模型）
-- 连续多帧确认（约 0.3～0.5s）后才切换结果，避免逐帧闪烁
-- 状态写入统一日志（来源名：`手势识别`）
-- 其他脚本可订阅变化事件，例如：
+- YUV 在 GPU 转为 256×144 RGBA，MediaPipe 在 Android 单工作线程运行；繁忙时丢弃旧帧，不堆积推理任务。
+- 稳定保持 OK 300ms 进入“切片调整中”；保持 OK 上移减层、下移增层。
+- 位移有死区与步进限速；明显头动会冻结并重建基准。
+- 松开、遮挡、失帧超过 180ms或导航端接管会立即退出，重新做 OK 才能继续。
+- 术用手套、口腔灯和遮挡下的识别率必须在真机验收中单独记录。
+- 其他脚本可订阅切层事件：
 
 ```csharp
-RgbHandGestureRecognizer.Instance.GestureChanged += gesture =>
+RgbSliceGestureController.AnySliceStepRequested += step =>
 {
-    Debug.Log(RgbHandGestureNames.ToChinese(gesture));
+    Debug.Log($"slice delta={step.Step}, control={step.ControlVersion}");
 };
 ```
 
-HelloMR 启动时默认关闭；Engineer Mode 下 Beam Pro 右侧 **Enable / Disable Gesture** 可开关。请把手伸到 Eye 前方、保证光照充足，掌心大致朝向相机。
+产品启动会启用切片手势。若相机、模型或 MediaPipe 初始化失败，状态显示明确原因，切片不会响应。
 
 ### 左眼预览（Beam Pro 屏幕）
 
-`LeftEyeDisplayWindow` 将 **XR 左眼渲染输出** 镜像到 Beam Pro 手机屏幕底部预览区，便于在手机上查看眼镜端 One Pro 视角。
+`LeftEyeDisplayWindow` 将 **XR 左眼实际渲染输出** 镜像到 Beam Pro 屏幕。`XrRgbRtpStreamer` 按导航端指令把左眼画面和可选 RGB 合成一路 1280×720、15fps、无音频的 RTP 视频；导航端可将两块区域分窗显示。编码不可用时会回报不可用，不用替代画面冒充 XR 输出。
 
 ### 参考物体
 
@@ -126,17 +137,19 @@ HelloMR 启动时默认关闭；Engineer Mode 下 Beam Pro 右侧 **Enable / Dis
 
 ### 手术机器人模型（gRPC）
 
-按 `dental_model_transfer.proto` 从手术机器人服务端双向流式接收模型与导航数据：
+按 `dental_model_transfer.proto` 从导航软件双向流式接收上下文、导航帧、控制和资产：
 
 | 组件 | 作用 |
 |------|------|
 | `DentalRobotConnectionDefaults` | 共享默认连接参数（Host / Port / DeviceId / DatasetId） |
 | `DentalRobotGrpcClient` | gRPC 客户端；启动可自动搜索，也可由 UI 触发 `SearchEndpoint` |
-| `DentalNavigationState` | 导航总线：三轴、矩阵、连接状态、新鲜度 |
+| `DentalNavigationState` | 上下文/帧/阈值/切片/布局/观察控制及版本过滤 |
 | `DentalNavigationBand` | 阈值、滞回、告警文案 |
 | `DentalHudController` | 眼镜头锁定 HUD |
 | `DentalRobotBeamProDisplay` | 助手台：IP/端口搜索 + 导航镜像 |
 | `DentalRobotModelRenderer` | 解析 STL，头锁定小脑图，按 `drill_from_teeth` 放置 drill |
+| `DentalCtVolumeService` | DICOM 分块续传、SHA 校验、解析、体数据和按需切片缓存 |
+| `DentalCtSliceCoordinator` | 规划轴切片、解剖方向、双端控制应用 |
 | `DentalStlMeshUtility` | 共享二进制 / ASCII STL 网格解析 |
 
 默认连接：
@@ -150,11 +163,11 @@ dataset_id: default
 
 运行时行为：
 
-1. 客户端发送 `ModelRequest`，接收 `ModelMetadata`、`StlChunk`、`TransferEnd`
-2. `distance` / `lateral_distance` / `angle` 进入 `DentalNavigationState`，驱动眼镜 HUD 与 Beam Pro 仪表
-3. teeth / drill STL 导入后作为头锁定小脑图；drill 位姿由 `drill_from_teeth`（行主序 4×4）决定
-4. 显示颜色：teeth **灰白半透明**，drill **青色不透明**
-5. 连接事件写入日志（来源名：`手术机器人`）；metadata **不会**逐帧刷日志
+1. `StreamSession` 长连接接收上下文、阈值和实时帧；旧上下文或旧序号帧会被拒绝。
+2. `StreamAssets` 独立接收完整 DICOM/STL。DICOM 块持久化成功后才 ACK，支持覆盖区间续传和 SHA-256 校验；完成资产传输不会停止实时导航。
+3. CT 默认显示垂直于规划轴、经过规划入点的物理切片；导航端下发的切片与控制版本优先。
+4. `StreamSession` 还处理布局和观察控制；切片手势会携带当前控制版本，过期指令由导航端拒绝。
+5. v1 `StreamDentalModel` 作为兼容入口保留，字段号未复用。
 
 ### 其他 UI
 
@@ -279,6 +292,7 @@ Assets/
 │   └── XREALLicenseSetup.cs             # License 文件引导（可选）
 ├── Plugins/
 │   ├── Android/CameraPermission.androidlib/  # CAMERA / 网络权限
+│   ├── Android/MediaPipeHandLandmarker.androidlib/ # Android MediaPipe bridge + 离线模型
 │   └── Grpc/                            # gRPC / Protobuf 运行时 DLL
 ├── StreamingAssets/
 │   ├── check_plane.STL                  # Check Plane 模型
@@ -288,24 +302,30 @@ Assets/
     ├── HelloMR.cs                       # 追踪/输入/UI 总控 + 右侧按钮列
     ├── BeamProOverlayLayout.cs          # Beam Pro 分区布局
     ├── BeamProUnifiedLogWindow.cs       # 统一日志窗口
-    ├── RGBCameraFloatingWindow.cs       # RGB 世界空间预览 + 日志写入
+    ├── RgbCameraFrameService.cs         # RGB 相机唯一所有者与多消费者分发
+    ├── RGBCameraFloatingWindow.cs       # RGB 世界空间预览
     ├── RgbHandGesture.cs                # 手势枚举与 Observation
-    ├── RgbHandGestureAnalyzer.cs        # RGB 帧肤色/轮廓分类
-    ├── RgbHandGestureRecognizer.cs      # Eye RGB 手势识别 + 事件/日志
+    ├── RgbHandGestureAnalyzer.cs        # 21 点关键点 OK 规则
+    ├── MediaPipeAndroidHandLandmarkProvider.cs # Android 离线关键点适配器
+    ├── RgbHandGestureRecognizer.cs      # Eye RGB 关键点识别 + 事件/日志
+    ├── RgbSliceGestureStateMachine.cs   # 300ms OK、死区、限速和失效处理
+    ├── XrRgbRtpStreamer.cs              # XR 左眼 + 可选 RGB 合成 RTP
     ├── LeftEyeDisplayWindow.cs          # Beam Pro 底部左眼预览
     ├── ReferenceCubeSpawner.cs          # 参考立方体 / Check Plane
     ├── DentalRobotConnectionDefaults.cs # 默认 gRPC 连接参数
     ├── DentalRobotGrpcClient.cs         # 手术机器人 gRPC 客户端
     ├── DentalNavigationState.cs         # 导航总线
     ├── DentalNavigationBand.cs          # 阈值 / 滞回 / 告警
+    ├── DentalDisplayLayoutController.cs # 双窗口位置、显隐和设备持久化
     ├── DentalHudController.cs           # 眼镜头锁定 HUD
     ├── DentalRobotModelRenderer.cs      # teeth/drill 小脑图
     ├── DentalRobotBeamProDisplay.cs     # 助手台仪表 + IP/端口搜索
     ├── DentalStlMeshUtility.cs          # 共享 STL 网格解析
+    ├── Dicom/                           # DICOM 传输、解码、体数据和切片
     └── GrpcGenerated/                   # dental_model_transfer 生成代码
 ```
 
-根目录另有 `dental_model_transfer.proto`（手术机器人模型传输协议）。
+根目录另有 `dental_model_transfer.proto`；`Tools/navigation-simulator` 是可执行的 v2 gRPC 模拟服务与冒烟测试。
 
 ## 常见问题
 
@@ -319,13 +339,13 @@ Assets/
 产品默认不采集。Engineer Mode 下确认 XREAL Eye 已连接、Camera 权限已授予，查看日志 **`[RGB 相机]`** 的 plug 状态与 capture 日志。
 
 **RGB 手势一直显示「无」**  
-确认 Eye RGB 已出画面（`[RGB 相机]` 有 first frame）；把手伸到眼镜前方、掌心朝向 Eye，避免逆光/过暗。识别来自 RGB 轮廓而非 XR Hands API，一次主要识别一只手；肤色接近背景、或画面中有其他人脸时可能误检。日志 **`[手势识别]`** 会打印缺陷数/紧致度等调试特征。
+确认 Eye RGB 已出画面，并检查 `[手势识别]` 是否显示 `MediaPipe Hand Landmarker 1.0.0` 为 running。手完整进入相机视野并稳定做 OK；编辑器没有 Android MediaPipe runtime，会明确显示不可用。真机仍需在实际手套、口腔灯、器械和遮挡环境下验证。
 
 **手术机器人 gRPC 连不上**  
 确认手机与机器人服务端在同一局域网；在 Beam Pro 顶部核对 IP/端口后点 **开始搜索**。产品模式看仪表「未连接」；Engineer Mode 看日志 **`[手术机器人]`**。默认地址见 `DentalRobotConnectionDefaults.cs`。
 
 **眼镜 HUD 数字大了或小了约 1000 倍**  
-在 `Dental Navigation State` 上改 `Distance To Millimeters`（米→mm 用 1000，若服务端已是 mm 则改为 1）。角度若接近 0.01 量级，把 `Angle To Degrees` 改为 `57.2958`。
+v2 协议只接受 mm 和 °，请修正导航端发送单位；客户端不会用 Inspector 比例猜测单位。v1 兼容数据仍沿用旧服务约定，但不会补造方向和阈值能力。
 
 **Editor 中 gRPC 脚本报找不到程序集**  
 确认 `Assets/Plugins/Grpc/` 下各 DLL 的 PluginImporter 已对 **Editor** 启用。

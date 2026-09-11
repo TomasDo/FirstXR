@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,6 +8,8 @@ namespace Unity.XR.XREAL.Samples
 {
     public class DentalRobotModelRenderer : MonoBehaviour
     {
+        public const long MaxStlAssetBytes = 128L * 1024L * 1024L;
+
         public enum DentalModelType
         {
             Unknown = 0,
@@ -16,15 +19,19 @@ namespace Unity.XR.XREAL.Samples
 
         class ModelBuffer
         {
-            public readonly List<byte> Bytes = new List<byte>(1024 * 1024);
+            public byte[] Bytes = Array.Empty<byte>();
             public string FileName = string.Empty;
             public long HighestReceivedOffset;
+            public long ExpectedBytes;
+            public bool ManifestTransferActive;
 
             public void Clear()
             {
-                Bytes.Clear();
+                Bytes = Array.Empty<byte>();
                 FileName = string.Empty;
                 HighestReceivedOffset = 0;
+                ExpectedBytes = 0;
+                ManifestTransferActive = false;
             }
         }
 
@@ -41,7 +48,7 @@ namespace Unity.XR.XREAL.Samples
         Color m_DrillColor = new Color(0.361f, 0.882f, 1f, 1f);
 
         [SerializeField]
-        bool m_WidgetVisible = true;
+        bool m_WidgetVisible = false;
 
         static DentalRobotModelRenderer s_Instance;
 
@@ -74,6 +81,7 @@ namespace Unity.XR.XREAL.Samples
             }
 
             s_Instance = this;
+            DentalDisplayLayoutController.EnsureInstance();
             m_Buffers[DentalModelType.Teeth] = new ModelBuffer();
             m_Buffers[DentalModelType.Drill] = new ModelBuffer();
         }
@@ -99,6 +107,7 @@ namespace Unity.XR.XREAL.Samples
         void LateUpdate()
         {
             AttachToCameraIfNeeded();
+            ApplyLayoutAndValidity();
         }
 
         void OnDestroy()
@@ -148,17 +157,29 @@ namespace Unity.XR.XREAL.Samples
 
         void OnNavigationChanged(DentalNavigationSnapshot snap)
         {
-            if (!snap.HasDrillMatrix)
+            var valid = snap.HasDrillMatrix
+                && snap.Link == DentalLinkState.Live
+                && !snap.HideNumbers
+                && (!snap.HasNavigationFrame || snap.FrameValid);
+            if (!valid)
+            {
+                m_HasMetadata = false;
+                SetRealtimeObjectsVisible(false);
                 return;
+            }
 
             m_HasMetadata = true;
             m_DrillMatrix = snap.DrillFromTeeth;
+            SetRealtimeObjectsVisible(true);
             ApplyDrillTransformFromMetadata();
         }
 
         public void SetWidgetVisible(bool visible)
         {
             m_WidgetVisible = visible;
+            var layout = DentalDisplayLayoutController.Instance;
+            if (layout != null && layout.ModelVisible != visible)
+                layout.SetModelVisibleLocally(visible);
             if (m_Root != null)
                 m_Root.gameObject.SetActive(visible);
         }
@@ -181,61 +202,135 @@ namespace Unity.XR.XREAL.Samples
 
         public void ApplyStlChunk(DentalModelType modelType, string filename, long offset, byte[] data)
         {
+            TryApplyStlChunk(modelType, filename, offset, data);
+        }
+
+        public bool TryApplyStlChunk(DentalModelType modelType, string filename, long offset, byte[] data)
+        {
             if (modelType != DentalModelType.Teeth && modelType != DentalModelType.Drill)
-                return;
+                return false;
 
             if (data == null || data.Length == 0)
-                return;
+                return false;
 
             var buffer = m_Buffers[modelType];
-            if (offset == 0 && buffer.Bytes.Count > 0)
+            if (!buffer.ManifestTransferActive && offset == 0 && buffer.Bytes.Length > 0)
                 buffer.Clear();
 
             buffer.FileName = string.IsNullOrEmpty(filename) ? modelType.ToString() + ".stl" : filename;
-            CopyChunk(buffer, offset, data);
+            return CopyChunk(buffer, offset, data);
+        }
+
+        public bool BeginStlAsset(DentalModelType modelType, string filename, long expectedBytes)
+        {
+            if ((modelType != DentalModelType.Teeth && modelType != DentalModelType.Drill)
+                || expectedBytes <= 0 || expectedBytes > MaxStlAssetBytes)
+                return false;
+
+            var buffer = m_Buffers[modelType];
+            var normalizedFilename = string.IsNullOrEmpty(filename) ? modelType + ".stl" : filename;
+            if (buffer.ManifestTransferActive
+                && buffer.ExpectedBytes == expectedBytes
+                && string.Equals(buffer.FileName, normalizedFilename, StringComparison.Ordinal)
+                && buffer.Bytes.LongLength == expectedBytes)
+                return true;
+
+            buffer.Clear();
+            try
+            {
+                buffer.Bytes = new byte[(int)expectedBytes];
+                buffer.FileName = normalizedFilename;
+                buffer.ExpectedBytes = expectedBytes;
+                buffer.ManifestTransferActive = true;
+                return true;
+            }
+            catch (OutOfMemoryException)
+            {
+                buffer.Clear();
+                return false;
+            }
+        }
+
+        public bool TryCopyStlAssetBytes(
+            DentalModelType modelType,
+            long expectedBytes,
+            out byte[] bytes,
+            out string error)
+        {
+            bytes = null;
+            error = string.Empty;
+            if (!m_Buffers.TryGetValue(modelType, out var buffer))
+            {
+                error = "STL model type is unavailable.";
+                return false;
+            }
+            if (!buffer.ManifestTransferActive || buffer.ExpectedBytes != expectedBytes
+                || expectedBytes <= 0 || expectedBytes > MaxStlAssetBytes
+                || buffer.Bytes.LongLength != expectedBytes || buffer.HighestReceivedOffset != expectedBytes)
+            {
+                error = $"STL bytes are incomplete. buffered={buffer.Bytes.LongLength}, expected={expectedBytes}.";
+                return false;
+            }
+
+            bytes = (byte[])buffer.Bytes.Clone();
+            return true;
         }
 
         public void ApplyTransferEnd(long teethBytes, long drillBytes)
         {
             TryBuildModel(DentalModelType.Teeth, teethBytes);
             TryBuildModel(DentalModelType.Drill, drillBytes);
+            m_Buffers[DentalModelType.Teeth].ManifestTransferActive = false;
+            m_Buffers[DentalModelType.Drill].ManifestTransferActive = false;
             ApplyDrillTransformFromMetadata();
         }
 
-        static void CopyChunk(ModelBuffer buffer, long offset, byte[] data)
+        static bool CopyChunk(ModelBuffer buffer, long offset, byte[] data)
         {
             if (offset < 0)
-                offset = 0;
+                return false;
 
             var targetEnd = offset + data.Length;
-            if (targetEnd > int.MaxValue)
+            if (targetEnd < offset || targetEnd > MaxStlAssetBytes)
             {
                 Debug.LogWarning("DentalRobotModelRenderer: STL model is too large for a single Unity byte buffer.");
-                return;
+                return false;
             }
 
-            while (buffer.Bytes.Count < targetEnd)
-                buffer.Bytes.Add(0);
+            if (buffer.ManifestTransferActive && targetEnd > buffer.ExpectedBytes)
+                return false;
 
-            for (var i = 0; i < data.Length; i++)
-                buffer.Bytes[(int)offset + i] = data[i];
+            if (buffer.Bytes.LongLength < targetEnd)
+            {
+                try
+                {
+                    Array.Resize(ref buffer.Bytes, (int)targetEnd);
+                }
+                catch (OutOfMemoryException)
+                {
+                    return false;
+                }
+            }
+
+            Buffer.BlockCopy(data, 0, buffer.Bytes, (int)offset, data.Length);
 
             if (targetEnd > buffer.HighestReceivedOffset)
                 buffer.HighestReceivedOffset = targetEnd;
+            return true;
         }
 
         void TryBuildModel(DentalModelType modelType, long expectedBytes)
         {
-            if (!m_Buffers.TryGetValue(modelType, out var buffer) || buffer.Bytes.Count == 0)
+            if (!m_Buffers.TryGetValue(modelType, out var buffer) || buffer.Bytes.Length == 0)
                 return;
 
-            if (expectedBytes > 0 && buffer.Bytes.Count < expectedBytes)
+            if (expectedBytes > 0 && buffer.Bytes.LongLength < expectedBytes)
             {
-                Debug.LogWarning($"DentalRobotModelRenderer: {modelType} STL incomplete. received={buffer.Bytes.Count}, expected={expectedBytes}");
+                Debug.LogWarning($"DentalRobotModelRenderer: {modelType} STL incomplete. received={buffer.Bytes.LongLength}, expected={expectedBytes}");
                 return;
             }
 
-            var bytes = buffer.Bytes.ToArray();
+            var bytes = (byte[])buffer.Bytes.Clone();
             if (expectedBytes > 0 && expectedBytes < bytes.Length)
             {
                 if (expectedBytes > int.MaxValue)
@@ -310,8 +405,46 @@ namespace Unity.XR.XREAL.Samples
                 m_Root.SetParent(camera.transform, false);
             }
 
-            m_Root.localPosition = m_HeadLockedLocalPosition;
+            var layout = DentalDisplayLayoutController.Instance;
+            m_Root.localPosition = layout != null ? layout.ModelLocalPositionMeters : m_HeadLockedLocalPosition;
             m_Root.localRotation = Quaternion.identity;
+        }
+
+        void ApplyLayoutAndValidity()
+        {
+            var layout = DentalDisplayLayoutController.Instance;
+            if (layout != null)
+            {
+                m_WidgetVisible = layout.ModelVisible;
+                if (m_Root != null)
+                {
+                    m_Root.localPosition = layout.ModelLocalPositionMeters;
+                    if (m_Root.gameObject.activeSelf != m_WidgetVisible)
+                        m_Root.gameObject.SetActive(m_WidgetVisible);
+                }
+            }
+
+            var state = DentalNavigationState.Instance;
+            if (state == null)
+                return;
+            var snapshot = state.Capture(Time.realtimeSinceStartup);
+            var valid = snapshot.HasDrillMatrix
+                && snapshot.Link == DentalLinkState.Live
+                && !snapshot.HideNumbers
+                && (!snapshot.HasNavigationFrame || snapshot.FrameValid);
+            if (!valid)
+            {
+                m_HasMetadata = false;
+                SetRealtimeObjectsVisible(false);
+            }
+        }
+
+        void SetRealtimeObjectsVisible(bool visible)
+        {
+            if (m_DrillTransform != null && m_DrillTransform.gameObject.activeSelf != visible)
+                m_DrillTransform.gameObject.SetActive(visible);
+            if (m_AxisLine != null && m_AxisLine.gameObject.activeSelf != visible)
+                m_AxisLine.gameObject.SetActive(visible);
         }
 
         Transform EnsureModelObject(string name, ref Transform target, Material material)
@@ -355,8 +488,8 @@ namespace Unity.XR.XREAL.Samples
             if (!m_HasMetadata || m_DrillTransform == null)
                 return;
 
-            // drill_from_teeth is row-major (see dental_model_transfer.proto); Matrix4x4 is
-            // column-major, so GetColumn(i) recovers the source rows. Row 3 holds the translation.
+            // drill_from_teeth is serialized row-by-row. ToUnityMatrix assigns each
+            // [row,col] element explicitly, so column 3 is the source translation.
             m_DrillTransform.localPosition = (Vector3)m_DrillMatrix.GetColumn(3) - m_TeethSceneCenter;
             var forward = (Vector3)m_DrillMatrix.GetColumn(2);
             var up = (Vector3)m_DrillMatrix.GetColumn(1);

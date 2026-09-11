@@ -102,7 +102,7 @@ namespace Unity.XR.XREAL.Samples
             AppendLog(m_Status);
         }
 
-        public void ApplyStlChunk(string datasetId, string modelType, string filename, long offset, int byteCount, byte[] data)
+        public bool ApplyStlChunk(string datasetId, string modelType, string filename, long offset, int byteCount, byte[] data)
         {
             m_LastDatasetId = string.IsNullOrEmpty(datasetId) ? m_LastDatasetId : datasetId;
 
@@ -116,7 +116,8 @@ namespace Unity.XR.XREAL.Samples
                 AppendLog($"stl {key} {filename} start");
 
             if (DentalRobotModelRenderer.Instance != null)
-                DentalRobotModelRenderer.Instance.ApplyStlChunk(ParseModelType(key), filename, offset, data);
+                return DentalRobotModelRenderer.Instance.TryApplyStlChunk(ParseModelType(key), filename, offset, data);
+            return false;
         }
 
         public void ApplyTransferEnd(string datasetId, bool ok, string message, long teethBytes, long drillBytes)
@@ -176,7 +177,9 @@ namespace Unity.XR.XREAL.Samples
 
             var snap = state.Capture(Time.realtimeSinceStartup);
             var eval = state.LastEvaluation;
-            var depth = eval.DashNumbers ? "—" : snap.DepthMm.ToString("0.0") + "mm";
+            var depth = eval.DashNumbers || !snap.HasDepthBreakdown
+                ? "—"
+                : snap.RemainingDepthMm.ToString("0.0") + "mm";
             var lateral = eval.DashNumbers ? "—" : snap.LateralMm.ToString("0.0") + "mm";
             var angle = eval.DashNumbers ? "—" : snap.AngleDeg.ToString("0.0") + "°";
             BeamProUnifiedLogWindow.SetStatus("手术机器人",
@@ -205,24 +208,33 @@ namespace Unity.XR.XREAL.Samples
             var x = rect.x + pad;
             var width = rect.width - pad * 2f;
 
-            GUI.Label(new Rect(x, y, width, 36f), "手术导航", m_TitleStyle);
+            GUI.Label(new Rect(x, y, width, 36f), "手术导航 · XREAL", m_TitleStyle);
             y += 40f;
 
             var linkText = LinkPhrase(snap, eval);
             var previousContent = GUI.contentColor;
             GUI.contentColor = ColorForGrade(eval.Overall, true);
             GUI.Label(new Rect(x, y, width, 32f),
-                $"{linkText}    {Truncate(snap.DatasetId, 16)}    {AgeText(snap, eval)}",
+                $"{linkText}    {ContextPhrase(snap)}    {AgeText(snap, eval)}",
                 m_CaptionStyle);
             GUI.contentColor = previousContent;
             y += 40f;
 
             var cellWidth = (width - 24f) / 2f;
             var cellHeight = Mathf.Max(90f, (rect.yMax - y - 80f) * 0.42f);
-            DrawMetricCell(new Rect(x, y, cellWidth, cellHeight), "剩余深度", FormatMetric(snap.DepthMm, "mm", eval.DashNumbers), eval.Depth, false);
-            DrawMetricCell(new Rect(x + cellWidth + 24f, y, cellWidth, cellHeight), "侧偏", FormatMetric(snap.LateralMm, "mm", eval.DashNumbers), eval.Lateral, true);
+            DrawMetricCell(new Rect(x, y, cellWidth, cellHeight), "剩余深度",
+                FormatMetric(snap.RemainingDepthMm, "mm", eval.DashNumbers || !snap.HasDepthBreakdown), eval.Depth, false);
+            DrawMetricCell(new Rect(x + cellWidth + 24f, y, cellWidth, cellHeight), "位置偏移",
+                eval.DashNumbers
+                    ? "—"
+                    : $"{snap.LateralMm:0.0} mm\n{(snap.HasLateralDirection ? DirectionPhrase(snap.LateralBuccalMm, snap.LateralMesialMm, "偏") : "方向数据缺失")}",
+                eval.Lateral, true);
             y += cellHeight + 16f;
-            DrawMetricCell(new Rect(x, y, cellWidth, cellHeight), "轴向偏差", FormatMetric(snap.AngleDeg, "°", eval.DashNumbers), eval.Angle, true);
+            DrawMetricCell(new Rect(x, y, cellWidth, cellHeight), "角度偏差",
+                eval.DashNumbers
+                    ? "—"
+                    : $"{snap.AngleDeg:0.0}°\n{(snap.HasTiltDirection ? DirectionPhrase(snap.TiltBuccalDeg, snap.TiltMesialDeg, "向", "倾斜") : "方向数据缺失")}",
+                eval.Angle, true);
             DrawMetricCell(new Rect(x + cellWidth + 24f, y, cellWidth, cellHeight), "综合", OverallPhrase(eval.Overall), eval.Overall, true);
             y += cellHeight + 16f;
 
@@ -235,10 +247,14 @@ namespace Unity.XR.XREAL.Samples
             }
 
             GUI.contentColor = Gray;
+            var ct = DentalCtVolumeService.Instance;
+            var ctStatus = ct != null ? ct.StatusMessage : "CT 未加载";
+            var thresholdStatus = snap.HasThresholds ? $"阈值 v{snap.Thresholds.ConfigVersion}" : "阈值未同步";
             var transfer = m_HasTransferEnd
                 ? $"模型 {(m_LastTransferOk ? "完成" : "失败")}  teeth {m_TeethBytes} B  drill {m_DrillBytes} B"
                 : m_Status;
-            GUI.Label(new Rect(x, Mathf.Min(y, rect.yMax - 36f), width, 32f), transfer, m_CaptionStyle);
+            GUI.Label(new Rect(x, Mathf.Min(y, rect.yMax - 54f), width, 52f),
+                $"{thresholdStatus} · {ctStatus}\n{transfer}", m_CaptionStyle);
             GUI.contentColor = previousContent;
         }
 
@@ -421,6 +437,24 @@ namespace Unity.XR.XREAL.Samples
             if (string.IsNullOrEmpty(text) || text == "-" || text == "—")
                 return "—";
             return text.Length <= max ? text : text.Substring(0, max - 1) + "…";
+        }
+
+        static string ContextPhrase(DentalNavigationSnapshot snap)
+        {
+            if (!snap.HasContext)
+                return Truncate(snap.DatasetId, 16);
+            return $"{Truncate(snap.ToothId, 8)} · {Truncate(snap.ToolId, 8)}";
+        }
+
+        static string DirectionPhrase(float buccal, float mesial, string prefix, string suffix = "")
+        {
+            const float epsilon = 0.02f;
+            var first = buccal > epsilon ? "颊侧" : buccal < -epsilon ? "舌侧" : string.Empty;
+            var second = mesial > epsilon ? "近中" : mesial < -epsilon ? "远中" : string.Empty;
+            var direction = string.IsNullOrEmpty(first) ? second
+                : string.IsNullOrEmpty(second) ? first
+                : first + "·" + second;
+            return string.IsNullOrEmpty(direction) ? "方向居中" : prefix + direction + suffix;
         }
 
         static Color ColorForGrade(DentalMetricGrade grade, bool allowGreen)

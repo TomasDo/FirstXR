@@ -16,7 +16,7 @@ namespace Unity.XR.XREAL.Samples
         bool m_HudVisibleOnStart = true;
 
         [SerializeField]
-        bool m_NavWidgetVisibleOnStart = true;
+        bool m_NavWidgetVisibleOnStart = false;
 
         [SerializeField]
         bool m_ShowBeamProInputToggle = false;
@@ -55,7 +55,7 @@ namespace Unity.XR.XREAL.Samples
         bool m_ShowBeamProGestureToggle = false;
 
         [SerializeField]
-        bool m_EnableRgbGestureRecognition = false;
+        bool m_EnableRgbGestureRecognition = true;
 
         CanvasGroup m_GlassesControlCanvasGroup;
         ReferenceCubeSpawner m_ReferenceCubeSpawner;
@@ -95,16 +95,9 @@ namespace Unity.XR.XREAL.Samples
             EnsureGlassesControlWindowReference();
             EnsureReferenceCubeSpawnerReference();
             EnsureRGBCameraFloatingWindowReference();
-            if (m_EngineerMode)
-            {
-                EnsureRgbHandGestureRecognizer();
-                if (m_RgbHandGestureRecognizer != null)
-                    m_RgbHandGestureRecognizer.SetRecognitionEnabled(m_EnableRgbGestureRecognition);
-            }
-            else if (m_RgbHandGestureRecognizer != null)
-            {
-                m_RgbHandGestureRecognizer.SetRecognitionEnabled(false);
-            }
+            EnsureRgbHandGestureRecognizer();
+            if (m_RgbHandGestureRecognizer != null)
+                m_RgbHandGestureRecognizer.SetRecognitionEnabled(m_EnableRgbGestureRecognition);
 
             EnsureDentalRobotBeamProPanel();
             ApplyProductSurfaceDefaults();
@@ -170,9 +163,11 @@ namespace Unity.XR.XREAL.Samples
                 return;
 
             DentalNavigationState.EnsureInstance();
+            var layout = DentalDisplayLayoutController.EnsureInstance();
+            DentalCtVolumeService.EnsureInstance();
             DentalHudController.EnsureInstance();
-            DentalHudController.Instance.SetHudVisible(m_HudVisibleOnStart);
-            DentalHudController.Instance.SetWidgetFrameVisible(m_NavWidgetVisibleOnStart);
+            DentalHudController.Instance.SetHudVisible(layout != null ? layout.HudVisible : m_HudVisibleOnStart);
+            DentalHudController.Instance.SetWidgetFrameVisible(layout != null ? layout.ModelVisible : m_NavWidgetVisibleOnStart);
 
             if (FindObjectOfType<DentalRobotModelRenderer>() == null)
             {
@@ -181,7 +176,7 @@ namespace Unity.XR.XREAL.Samples
             }
 
             if (DentalRobotModelRenderer.Instance != null)
-                DentalRobotModelRenderer.Instance.SetWidgetVisible(m_NavWidgetVisibleOnStart);
+                DentalRobotModelRenderer.Instance.SetWidgetVisible(layout != null ? layout.ModelVisible : m_NavWidgetVisibleOnStart);
 
             var existingClient = FindObjectOfType<DentalRobotGrpcClient>();
             if (existingClient != null)
@@ -371,18 +366,24 @@ namespace Unity.XR.XREAL.Samples
             var rowSpacing = buttonLayout.RowSpacing;
 
             var hud = DentalHudController.Instance;
-            var hudVisible = hud == null || hud.HudVisible;
+            var layout = DentalDisplayLayoutController.EnsureInstance();
+            var hudVisible = layout != null ? layout.HudVisible : hud == null || hud.HudVisible;
             if (GUI.Button(new Rect(x, y, width, height), hudVisible ? k_HideHudLabel : k_ShowHudLabel))
             {
-                hud = DentalHudController.EnsureInstance();
-                hud.SetHudVisible(!hudVisible);
+                if (layout != null)
+                    layout.SetHudVisibleLocally(!hudVisible);
+                DentalHudController.EnsureInstance().SetHudVisible(!hudVisible);
             }
 
             y += height + rowSpacing;
-            var widgetVisible = DentalRobotModelRenderer.Instance == null || DentalRobotModelRenderer.Instance.WidgetVisible;
+            var widgetVisible = layout != null
+                ? layout.ModelVisible
+                : DentalRobotModelRenderer.Instance == null || DentalRobotModelRenderer.Instance.WidgetVisible;
             if (GUI.Button(new Rect(x, y, width, height), widgetVisible ? k_HideWidgetLabel : k_ShowWidgetLabel))
             {
                 var next = !widgetVisible;
+                if (layout != null)
+                    layout.SetModelVisibleLocally(next);
                 if (DentalRobotModelRenderer.Instance != null)
                     DentalRobotModelRenderer.Instance.SetWidgetVisible(next);
                 if (DentalHudController.Instance != null)

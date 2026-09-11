@@ -69,6 +69,12 @@ ignore.conf
 .gradle/
 **/gradle-build/
 
+# Local simulator dependencies
+**/node_modules/
+
+# MediaPipe task model is provisioned locally and is not uploaded to the repository
+/Assets/Plugins/Android/MediaPipeHandLandmarker.androidlib/src/main/assets/mediapipe/hand_landmarker.task
+
 # Addressables
 /[Aa]ssets/**/[Aa]ddressables*[Dd]ata/*/*.bin*
 /[Aa]ssets/[Ss]treamingAssets/aa.meta

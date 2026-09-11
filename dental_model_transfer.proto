@@ -16,27 +16,51 @@ syntax = "proto3";
 
 package dentalmodeltransfer;
 
+// Version 1 used StreamDentalModel only. The method and every v1 field number
+// remain reserved for wire compatibility. Version 2 separates the long-lived
+// navigation/control session from the resumable asset stream.
 service DentalModelTransfer {
-  // Android glasses connect as the client. The C++ side streams model data back
-  // while the client can send requests and acknowledgements on the same RPC.
+  // Legacy v1 endpoint. A v2 client falls back to this method when
+  // StreamSession is not implemented by the server.
   rpc StreamDentalModel(stream ClientMessage) returns (stream ServerMessage) {}
+
+  // Long-lived navigation and control channel. Asset completion does not end
+  // this RPC; only SessionEnd or transport shutdown ends a logical session.
+  rpc StreamSession(stream ClientMessage) returns (stream ServerMessage) {}
+
+  // Independent, resumable DICOM/STL asset channel.
+  rpc StreamAssets(stream AssetClientMessage) returns (stream AssetServerMessage) {}
 }
 
 message ClientMessage {
   oneof payload {
     ModelRequest request = 1;
     ClientAck ack = 2;
+    SliceCommand slice_command = 3;
+    DisplayStateReport display_state = 4;
+    ObservationStatus observation_status = 5;
+    Heartbeat heartbeat = 6;
   }
 }
 
 message ModelRequest {
   string device_id = 1;
   string dataset_id = 2;
+
+  uint32 protocol_version = 3;
+  string client_session_id = 4;
+  repeated Capability requested_capabilities = 5;
 }
 
 message ClientAck {
   string dataset_id = 1;
   string message = 2;
+
+  string session_id = 3;
+  AckKind kind = 4;
+  string item_id = 5;
+  uint64 version = 6;
+  bool accepted = 7;
 }
 
 message ServerMessage {
@@ -44,13 +68,24 @@ message ServerMessage {
     ModelMetadata metadata = 1;
     StlChunk stl_chunk = 2;
     TransferEnd end = 3;
+    NavigationContext navigation_context = 4;
+    NavigationFrame navigation_frame = 5;
+    ToleranceConfig tolerance_config = 6;
+    SliceState slice_state = 7;
+    DisplayLayout display_layout = 8;
+    ObservationControl observation_control = 9;
+    NavigationStatus navigation_status = 10;
+    SessionEnd session_end = 11;
+    Heartbeat heartbeat = 12;
+    CommandResult command_result = 13;
   }
 }
 
+// Legacy v1 metadata. Values use the v1 out-of-band unit configuration.
 message ModelMetadata {
   string dataset_id = 1;
 
-  // drill relative to teeth. This example uses row-major 4x4 ordering.
+  // Drill relative to teeth in row-major 4x4 ordering.
   repeated double drill_from_teeth = 2;
 
   double distance = 3;
@@ -72,10 +107,371 @@ message StlChunk {
   bytes data = 5;
 }
 
+// Legacy v1 model-transfer completion. This is not SessionEnd. V2 clients
+// continue reading navigation/control messages after receiving it.
 message TransferEnd {
   string dataset_id = 1;
   bool ok = 2;
   string message = 3;
   int64 teeth_bytes = 4;
   int64 drill_bytes = 5;
+  bool session_continues = 6;
+}
+
+enum Capability {
+  CAPABILITY_UNSPECIFIED = 0;
+  CAPABILITY_NAVIGATION_V2 = 1;
+  CAPABILITY_DICOM_ASSETS = 2;
+  CAPABILITY_SLICE_CONTROL = 3;
+  CAPABILITY_DISPLAY_LAYOUT = 4;
+  CAPABILITY_XR_MIRROR = 5;
+  CAPABILITY_RGB_VIEW = 6;
+}
+
+enum AckKind {
+  ACK_KIND_UNSPECIFIED = 0;
+  ACK_KIND_LEGACY_MESSAGE = 1;
+  ACK_KIND_CONTEXT = 2;
+  ACK_KIND_TOLERANCE = 3;
+  ACK_KIND_SLICE_CONTROL = 4;
+  ACK_KIND_DISPLAY_LAYOUT = 5;
+  ACK_KIND_OBSERVATION_CONTROL = 6;
+  ACK_KIND_SESSION_END = 7;
+}
+
+enum DistanceUnit {
+  DISTANCE_UNIT_UNSPECIFIED = 0;
+  DISTANCE_UNIT_MILLIMETER = 1;
+}
+
+enum AngleUnit {
+  ANGLE_UNIT_UNSPECIFIED = 0;
+  ANGLE_UNIT_DEGREE = 1;
+}
+
+message Vector3d {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+}
+
+message NavigationContext {
+  string session_id = 1;
+  string case_id = 2;
+  string dataset_id = 3;
+  string ct_id = 4;
+  string plan_id = 5;
+  string tooth_id = 6;
+  string tool_id = 7;
+  string step_id = 8;
+  uint64 context_version = 9;
+  Vector3d plan_entry_mm = 10;
+  Vector3d plan_axis = 11;
+  double target_depth_mm = 12;
+  Vector3d buccal_axis = 13;
+  Vector3d mesial_axis = 14;
+  string coordinate_frame_id = 15;
+
+  // Patient/plan space from DICOM patient coordinates, row-major 4x4.
+  repeated double patient_from_dicom = 16;
+  DistanceUnit distance_unit = 17;
+  AngleUnit angle_unit = 18;
+}
+
+message NavigationFrame {
+  string session_id = 1;
+  uint64 context_version = 2;
+  uint64 sequence = 3;
+  int64 capture_time_unix_ms = 4;
+  bool valid = 5;
+  string invalid_reason = 6;
+  Vector3d drill_tip_mm = 7;
+  Vector3d drill_axis = 8;
+
+  // Drill relative to teeth/patient navigation space, row-major 4x4.
+  repeated double drill_from_teeth = 9;
+
+  double lateral_mm = 10;
+  // Signed anatomical components: +buccal/-lingual and +mesial/-distal.
+  double lateral_buccal_mm = 11;
+  double lateral_mesial_mm = 12;
+  double angle_deg = 13;
+  // Signed tilt components use the same anatomical signs.
+  double tilt_buccal_deg = 14;
+  double tilt_mesial_deg = 15;
+  double current_depth_mm = 16;
+  double target_depth_mm = 17;
+  double remaining_depth_mm = 18;
+  DistanceUnit distance_unit = 19;
+  AngleUnit angle_unit = 20;
+
+  // Explicit capability presence. Proto3 scalar defaults are not evidence that a
+  // direction/depth breakdown was actually produced by the navigation system.
+  bool has_lateral_direction = 21;
+  bool has_tilt_direction = 22;
+  bool has_depth_breakdown = 23;
+}
+
+enum ThresholdBoundaryRule {
+  THRESHOLD_BOUNDARY_RULE_UNSPECIFIED = 0;
+  // Green <= green_max; amber <= red_min; red > red_min.
+  THRESHOLD_BOUNDARY_RULE_UPPER_BOUNDS_INCLUSIVE = 1;
+  // Green < green_max; amber < red_min; red >= red_min.
+  THRESHOLD_BOUNDARY_RULE_UPPER_BOUNDS_EXCLUSIVE = 2;
+}
+
+message ToleranceConfig {
+  string session_id = 1;
+  uint64 context_version = 2;
+  uint64 config_version = 3;
+  double lateral_green_max_mm = 4;
+  double lateral_red_min_mm = 5;
+  double lateral_hysteresis_mm = 6;
+  double angle_green_max_deg = 7;
+  double angle_red_min_deg = 8;
+  double angle_hysteresis_deg = 9;
+  double depth_approach_mm = 10;
+  double depth_at_target_tolerance_mm = 11;
+  double depth_overrun_red_mm = 12;
+  double depth_hysteresis_mm = 13;
+  ThresholdBoundaryRule boundary_rule = 14;
+  DistanceUnit distance_unit = 15;
+  AngleUnit angle_unit = 16;
+}
+
+enum ControlSource {
+  CONTROL_SOURCE_UNSPECIFIED = 0;
+  CONTROL_SOURCE_NAVIGATION_SOFTWARE = 1;
+  CONTROL_SOURCE_XREAL_GESTURE = 2;
+  CONTROL_SOURCE_BEAM_PRO = 3;
+}
+
+message SlicePlane {
+  string volume_id = 1;
+  string frame_of_reference_uid = 2;
+  Vector3d origin_mm = 3;
+  Vector3d normal = 4;
+  Vector3d up = 5;
+  double offset_mm = 6;
+  int32 slice_index = 7;
+  string sop_instance_uid = 8;
+  // Explicitly distinguishes a patient-space plane from native slice_index selection.
+  // Vector3d fields alone cannot carry presence reliably across all generated clients.
+  bool has_physical_plane = 9;
+}
+
+message SliceState {
+  string session_id = 1;
+  uint64 context_version = 2;
+  uint64 control_version = 3;
+  bool sync_enabled = 4;
+  ControlSource source = 5;
+  SlicePlane plane = 6;
+}
+
+message SliceCommand {
+  string session_id = 1;
+  uint64 context_version = 2;
+  uint64 base_control_version = 3;
+  uint64 command_sequence = 4;
+  ControlSource source = 5;
+
+  oneof selection {
+    int32 delta_steps = 6;
+    double offset_mm = 7;
+    SlicePlane plane = 8;
+  }
+}
+
+message DisplayLayout {
+  string session_id = 1;
+  uint64 context_version = 2;
+  uint64 control_version = 3;
+  ControlSource source = 4;
+  bool hud_visible = 5;
+  bool model_visible = 6;
+  Vector3d hud_position_m = 7;
+  Vector3d model_position_m = 8;
+  bool reset_to_default = 9;
+}
+
+message DisplayStateReport {
+  DisplayLayout applied_layout = 1;
+  bool accepted = 2;
+  string message = 3;
+}
+
+message ObservationControl {
+  string session_id = 1;
+  uint64 context_version = 2;
+  uint64 control_version = 3;
+  bool xr_mirror_enabled = 4;
+  bool rgb_enabled = 5;
+  string receiver_host = 6;
+  uint32 receiver_port = 7;
+  uint32 width = 8;
+  uint32 height = 9;
+  uint32 fps = 10;
+}
+
+message ObservationStatus {
+  string session_id = 1;
+  uint64 context_version = 2;
+  uint64 control_version = 3;
+  bool xr_mirror_available = 4;
+  bool rgb_available = 5;
+  string error = 6;
+}
+
+enum NavigationRunState {
+  NAVIGATION_RUN_STATE_UNSPECIFIED = 0;
+  NAVIGATION_RUN_STATE_ACTIVE = 1;
+  NAVIGATION_RUN_STATE_PAUSED = 2;
+  NAVIGATION_RUN_STATE_STOPPED = 3;
+}
+
+message NavigationStatus {
+  string session_id = 1;
+  uint64 context_version = 2;
+  NavigationRunState state = 3;
+  string reason = 4;
+}
+
+message SessionEnd {
+  string session_id = 1;
+  bool reconnect_allowed = 2;
+  string reason = 3;
+}
+
+message Heartbeat {
+  string session_id = 1;
+  int64 sent_time_unix_ms = 2;
+}
+
+message CommandResult {
+  string session_id = 1;
+  uint64 context_version = 2;
+  uint64 command_sequence = 3;
+  uint64 control_version = 4;
+  bool accepted = 5;
+  string message = 6;
+}
+
+enum AssetType {
+  ASSET_TYPE_UNSPECIFIED = 0;
+  ASSET_TYPE_DICOM_INSTANCE = 1;
+  ASSET_TYPE_STL_TEETH = 2;
+  ASSET_TYPE_STL_DRILL = 3;
+}
+
+message AssetDescriptor {
+  string asset_id = 1;
+  string dataset_id = 2;
+  AssetType asset_type = 3;
+  string relative_path = 4;
+  string filename = 5;
+  int64 total_bytes = 6;
+  bytes sha256 = 7;
+  string media_type = 8;
+  string transfer_syntax_uid = 9;
+  string sop_instance_uid = 10;
+  uint32 frame_count = 11;
+  uint32 order_index = 12;
+}
+
+message AssetManifest {
+  string transfer_id = 1;
+  string session_id = 2;
+  string dataset_id = 3;
+  uint64 context_version = 4;
+  repeated AssetDescriptor assets = 5;
+}
+
+message AssetChunk {
+  string transfer_id = 1;
+  string asset_id = 2;
+  int64 offset = 3;
+  bytes data = 4;
+  uint32 crc32 = 5;
+}
+
+message AssetResult {
+  string asset_id = 1;
+  bool ok = 2;
+  string message = 3;
+  int64 received_bytes = 4;
+  bytes sha256 = 5;
+}
+
+// Asset completion is independent of NavigationStatus and SessionEnd.
+message AssetTransferComplete {
+  string transfer_id = 1;
+  string session_id = 2;
+  string dataset_id = 3;
+  uint64 context_version = 4;
+  bool ok = 5;
+  string message = 6;
+  repeated AssetResult results = 7;
+}
+
+message AssetRequest {
+  string device_id = 1;
+  string session_id = 2;
+  string dataset_id = 3;
+  uint64 context_version = 4;
+  bool include_all = 5;
+  repeated string asset_ids = 6;
+  repeated string accepted_transfer_syntax_uids = 7;
+}
+
+message AssetResumeOffset {
+  string asset_id = 1;
+  int64 next_offset = 2;
+}
+
+message AssetResumeRequest {
+  string transfer_id = 1;
+  string dataset_id = 2;
+  repeated AssetResumeOffset assets = 3;
+}
+
+message AssetChunkAck {
+  string transfer_id = 1;
+  string asset_id = 2;
+  int64 next_offset = 3;
+  bool accepted = 4;
+  string message = 5;
+}
+
+message AssetManifestAck {
+  string transfer_id = 1;
+  bool accepted = 2;
+  string message = 3;
+}
+
+message AssetCompleteAck {
+  string transfer_id = 1;
+  bool accepted = 2;
+  string message = 3;
+}
+
+message AssetClientMessage {
+  oneof payload {
+    AssetRequest request = 1;
+    AssetChunkAck chunk_ack = 2;
+    AssetResumeRequest resume = 3;
+    Heartbeat heartbeat = 4;
+    AssetManifestAck manifest_ack = 5;
+    AssetCompleteAck complete_ack = 6;
+  }
+}
+
+message AssetServerMessage {
+  oneof payload {
+    AssetManifest manifest = 1;
+    AssetChunk chunk = 2;
+    AssetTransferComplete complete = 3;
+    Heartbeat heartbeat = 4;
+    SessionEnd session_end = 5;
+  }
 }

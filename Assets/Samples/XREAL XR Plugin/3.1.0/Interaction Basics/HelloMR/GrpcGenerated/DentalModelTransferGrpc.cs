@@ -23,6 +23,11 @@
 using grpc = global::Grpc.Core;
 
 namespace Dentalmodeltransfer {
+  /// <summary>
+  /// Version 1 used StreamDentalModel only. The method and every v1 field number
+  /// remain reserved for wire compatibility. Version 2 separates the long-lived
+  /// navigation/control session from the resumable asset stream.
+  /// </summary>
   public static partial class DentalModelTransfer
   {
     static readonly string __ServiceName = "dentalmodeltransfer.DentalModelTransfer";
@@ -64,6 +69,10 @@ namespace Dentalmodeltransfer {
     static readonly grpc::Marshaller<global::Dentalmodeltransfer.ClientMessage> __Marshaller_dentalmodeltransfer_ClientMessage = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Dentalmodeltransfer.ClientMessage.Parser));
     [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
     static readonly grpc::Marshaller<global::Dentalmodeltransfer.ServerMessage> __Marshaller_dentalmodeltransfer_ServerMessage = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Dentalmodeltransfer.ServerMessage.Parser));
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Marshaller<global::Dentalmodeltransfer.AssetClientMessage> __Marshaller_dentalmodeltransfer_AssetClientMessage = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Dentalmodeltransfer.AssetClientMessage.Parser));
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Marshaller<global::Dentalmodeltransfer.AssetServerMessage> __Marshaller_dentalmodeltransfer_AssetServerMessage = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Dentalmodeltransfer.AssetServerMessage.Parser));
 
     [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
     static readonly grpc::Method<global::Dentalmodeltransfer.ClientMessage, global::Dentalmodeltransfer.ServerMessage> __Method_StreamDentalModel = new grpc::Method<global::Dentalmodeltransfer.ClientMessage, global::Dentalmodeltransfer.ServerMessage>(
@@ -72,6 +81,22 @@ namespace Dentalmodeltransfer {
         "StreamDentalModel",
         __Marshaller_dentalmodeltransfer_ClientMessage,
         __Marshaller_dentalmodeltransfer_ServerMessage);
+
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Method<global::Dentalmodeltransfer.ClientMessage, global::Dentalmodeltransfer.ServerMessage> __Method_StreamSession = new grpc::Method<global::Dentalmodeltransfer.ClientMessage, global::Dentalmodeltransfer.ServerMessage>(
+        grpc::MethodType.DuplexStreaming,
+        __ServiceName,
+        "StreamSession",
+        __Marshaller_dentalmodeltransfer_ClientMessage,
+        __Marshaller_dentalmodeltransfer_ServerMessage);
+
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Method<global::Dentalmodeltransfer.AssetClientMessage, global::Dentalmodeltransfer.AssetServerMessage> __Method_StreamAssets = new grpc::Method<global::Dentalmodeltransfer.AssetClientMessage, global::Dentalmodeltransfer.AssetServerMessage>(
+        grpc::MethodType.DuplexStreaming,
+        __ServiceName,
+        "StreamAssets",
+        __Marshaller_dentalmodeltransfer_AssetClientMessage,
+        __Marshaller_dentalmodeltransfer_AssetServerMessage);
 
     /// <summary>Service descriptor</summary>
     public static global::Google.Protobuf.Reflection.ServiceDescriptor Descriptor
@@ -84,8 +109,8 @@ namespace Dentalmodeltransfer {
     public abstract partial class DentalModelTransferBase
     {
       /// <summary>
-      /// Android glasses connect as the client. The C++ side streams model data back
-      /// while the client can send requests and acknowledgements on the same RPC.
+      /// Legacy v1 endpoint. A v2 client falls back to this method when
+      /// StreamSession is not implemented by the server.
       /// </summary>
       /// <param name="requestStream">Used for reading requests from the client.</param>
       /// <param name="responseStream">Used for sending responses back to the client.</param>
@@ -93,6 +118,33 @@ namespace Dentalmodeltransfer {
       /// <returns>A task indicating completion of the handler.</returns>
       [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
       public virtual global::System.Threading.Tasks.Task StreamDentalModel(grpc::IAsyncStreamReader<global::Dentalmodeltransfer.ClientMessage> requestStream, grpc::IServerStreamWriter<global::Dentalmodeltransfer.ServerMessage> responseStream, grpc::ServerCallContext context)
+      {
+        throw new grpc::RpcException(new grpc::Status(grpc::StatusCode.Unimplemented, ""));
+      }
+
+      /// <summary>
+      /// Long-lived navigation and control channel. Asset completion does not end
+      /// this RPC; only SessionEnd or transport shutdown ends a logical session.
+      /// </summary>
+      /// <param name="requestStream">Used for reading requests from the client.</param>
+      /// <param name="responseStream">Used for sending responses back to the client.</param>
+      /// <param name="context">The context of the server-side call handler being invoked.</param>
+      /// <returns>A task indicating completion of the handler.</returns>
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual global::System.Threading.Tasks.Task StreamSession(grpc::IAsyncStreamReader<global::Dentalmodeltransfer.ClientMessage> requestStream, grpc::IServerStreamWriter<global::Dentalmodeltransfer.ServerMessage> responseStream, grpc::ServerCallContext context)
+      {
+        throw new grpc::RpcException(new grpc::Status(grpc::StatusCode.Unimplemented, ""));
+      }
+
+      /// <summary>
+      /// Independent, resumable DICOM/STL asset channel.
+      /// </summary>
+      /// <param name="requestStream">Used for reading requests from the client.</param>
+      /// <param name="responseStream">Used for sending responses back to the client.</param>
+      /// <param name="context">The context of the server-side call handler being invoked.</param>
+      /// <returns>A task indicating completion of the handler.</returns>
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual global::System.Threading.Tasks.Task StreamAssets(grpc::IAsyncStreamReader<global::Dentalmodeltransfer.AssetClientMessage> requestStream, grpc::IServerStreamWriter<global::Dentalmodeltransfer.AssetServerMessage> responseStream, grpc::ServerCallContext context)
       {
         throw new grpc::RpcException(new grpc::Status(grpc::StatusCode.Unimplemented, ""));
       }
@@ -127,8 +179,8 @@ namespace Dentalmodeltransfer {
       }
 
       /// <summary>
-      /// Android glasses connect as the client. The C++ side streams model data back
-      /// while the client can send requests and acknowledgements on the same RPC.
+      /// Legacy v1 endpoint. A v2 client falls back to this method when
+      /// StreamSession is not implemented by the server.
       /// </summary>
       /// <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
       /// <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
@@ -140,8 +192,8 @@ namespace Dentalmodeltransfer {
         return StreamDentalModel(new grpc::CallOptions(headers, deadline, cancellationToken));
       }
       /// <summary>
-      /// Android glasses connect as the client. The C++ side streams model data back
-      /// while the client can send requests and acknowledgements on the same RPC.
+      /// Legacy v1 endpoint. A v2 client falls back to this method when
+      /// StreamSession is not implemented by the server.
       /// </summary>
       /// <param name="options">The options for the call.</param>
       /// <returns>The call object.</returns>
@@ -149,6 +201,52 @@ namespace Dentalmodeltransfer {
       public virtual grpc::AsyncDuplexStreamingCall<global::Dentalmodeltransfer.ClientMessage, global::Dentalmodeltransfer.ServerMessage> StreamDentalModel(grpc::CallOptions options)
       {
         return CallInvoker.AsyncDuplexStreamingCall(__Method_StreamDentalModel, null, options);
+      }
+      /// <summary>
+      /// Long-lived navigation and control channel. Asset completion does not end
+      /// this RPC; only SessionEnd or transport shutdown ends a logical session.
+      /// </summary>
+      /// <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+      /// <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+      /// <param name="cancellationToken">An optional token for canceling the call.</param>
+      /// <returns>The call object.</returns>
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual grpc::AsyncDuplexStreamingCall<global::Dentalmodeltransfer.ClientMessage, global::Dentalmodeltransfer.ServerMessage> StreamSession(grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+      {
+        return StreamSession(new grpc::CallOptions(headers, deadline, cancellationToken));
+      }
+      /// <summary>
+      /// Long-lived navigation and control channel. Asset completion does not end
+      /// this RPC; only SessionEnd or transport shutdown ends a logical session.
+      /// </summary>
+      /// <param name="options">The options for the call.</param>
+      /// <returns>The call object.</returns>
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual grpc::AsyncDuplexStreamingCall<global::Dentalmodeltransfer.ClientMessage, global::Dentalmodeltransfer.ServerMessage> StreamSession(grpc::CallOptions options)
+      {
+        return CallInvoker.AsyncDuplexStreamingCall(__Method_StreamSession, null, options);
+      }
+      /// <summary>
+      /// Independent, resumable DICOM/STL asset channel.
+      /// </summary>
+      /// <param name="headers">The initial metadata to send with the call. This parameter is optional.</param>
+      /// <param name="deadline">An optional deadline for the call. The call will be cancelled if deadline is hit.</param>
+      /// <param name="cancellationToken">An optional token for canceling the call.</param>
+      /// <returns>The call object.</returns>
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual grpc::AsyncDuplexStreamingCall<global::Dentalmodeltransfer.AssetClientMessage, global::Dentalmodeltransfer.AssetServerMessage> StreamAssets(grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+      {
+        return StreamAssets(new grpc::CallOptions(headers, deadline, cancellationToken));
+      }
+      /// <summary>
+      /// Independent, resumable DICOM/STL asset channel.
+      /// </summary>
+      /// <param name="options">The options for the call.</param>
+      /// <returns>The call object.</returns>
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual grpc::AsyncDuplexStreamingCall<global::Dentalmodeltransfer.AssetClientMessage, global::Dentalmodeltransfer.AssetServerMessage> StreamAssets(grpc::CallOptions options)
+      {
+        return CallInvoker.AsyncDuplexStreamingCall(__Method_StreamAssets, null, options);
       }
       /// <summary>Creates a new instance of client from given <c>ClientBaseConfiguration</c>.</summary>
       [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
@@ -164,7 +262,9 @@ namespace Dentalmodeltransfer {
     public static grpc::ServerServiceDefinition BindService(DentalModelTransferBase serviceImpl)
     {
       return grpc::ServerServiceDefinition.CreateBuilder()
-          .AddMethod(__Method_StreamDentalModel, serviceImpl.StreamDentalModel).Build();
+          .AddMethod(__Method_StreamDentalModel, serviceImpl.StreamDentalModel)
+          .AddMethod(__Method_StreamSession, serviceImpl.StreamSession)
+          .AddMethod(__Method_StreamAssets, serviceImpl.StreamAssets).Build();
     }
 
     /// <summary>Register service method with a service binder with or without implementation. Useful when customizing the service binding logic.
@@ -175,6 +275,8 @@ namespace Dentalmodeltransfer {
     public static void BindService(grpc::ServiceBinderBase serviceBinder, DentalModelTransferBase serviceImpl)
     {
       serviceBinder.AddMethod(__Method_StreamDentalModel, serviceImpl == null ? null : new grpc::DuplexStreamingServerMethod<global::Dentalmodeltransfer.ClientMessage, global::Dentalmodeltransfer.ServerMessage>(serviceImpl.StreamDentalModel));
+      serviceBinder.AddMethod(__Method_StreamSession, serviceImpl == null ? null : new grpc::DuplexStreamingServerMethod<global::Dentalmodeltransfer.ClientMessage, global::Dentalmodeltransfer.ServerMessage>(serviceImpl.StreamSession));
+      serviceBinder.AddMethod(__Method_StreamAssets, serviceImpl == null ? null : new grpc::DuplexStreamingServerMethod<global::Dentalmodeltransfer.AssetClientMessage, global::Dentalmodeltransfer.AssetServerMessage>(serviceImpl.StreamAssets));
     }
 
   }

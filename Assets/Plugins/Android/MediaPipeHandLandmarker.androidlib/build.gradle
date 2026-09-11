@@ -1,0 +1,33 @@
+apply plugin: 'android-library'
+
+dependencies {
+    implementation fileTree(dir: 'bin', include: ['*.jar'])
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    // This module owns the Java bridge, so it must compile against Tasks Vision itself.
+    implementation 'com.google.mediapipe:tasks-vision:1.0.0'
+}
+
+android {
+    namespace "com.firstxr.mediapipe"
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+            res.srcDirs = ['res']
+            assets.srcDirs = ['src/main/assets']
+            jniLibs.srcDirs = ['libs']
+        }
+    }
+
+    // Keep these aligned with the Android settings used by this XREAL project. Unity copies a
+    // library-local build.gradle verbatim and does not expand its template tokens.
+    compileSdkVersion 35
+    buildToolsVersion '34.0.0'
+    defaultConfig {
+        minSdkVersion 29
+        targetSdkVersion 35
+    }
+
+    lintOptions {
+        abortOnError false
+    }
+}

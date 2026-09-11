@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -31,6 +32,18 @@ namespace Unity.XR.XREAL.Samples
         Material m_ArraySliceMaterial;
         string m_StatusMessage = "Initializing left eye preview...";
         string m_DebugInfo;
+        bool m_LastFrameIsXrDisplay;
+        double m_LastXrFrameTime;
+
+        public RenderTexture PreviewTexture => m_PreviewTexture;
+        public bool HasLiveXrFrame => m_LastFrameIsXrDisplay
+            && Time.realtimeSinceStartupAsDouble - m_LastXrFrameTime <= 0.25;
+        public event Action<RenderTexture> XrFrameUpdated;
+
+        void Awake()
+        {
+            EnsureObservationStreamer();
+        }
 
         void Start()
         {
@@ -94,12 +107,33 @@ namespace Unity.XR.XREAL.Samples
                 return;
 
             if (TryBlitLeftEyeFromXrDisplay(m_DisplaySubsystem))
+            {
+                m_LastFrameIsXrDisplay = true;
+                m_LastXrFrameTime = Time.realtimeSinceStartupAsDouble;
+                XrFrameUpdated?.Invoke(m_PreviewTexture);
                 return;
+            }
 
             if (m_FallbackToMainCameraRender && TryRenderMainCameraPreview())
+            {
+                m_LastFrameIsXrDisplay = false;
                 return;
+            }
 
+            m_LastFrameIsXrDisplay = false;
             m_DebugInfo = "No left eye frame available.";
+        }
+
+        public bool TryGetLiveXrFrame(out RenderTexture texture)
+        {
+            texture = HasLiveXrFrame ? m_PreviewTexture : null;
+            return texture != null;
+        }
+
+        void EnsureObservationStreamer()
+        {
+            if (FindObjectOfType<XrRgbRtpStreamer>() == null)
+                gameObject.AddComponent<XrRgbRtpStreamer>();
         }
 
         bool TryBlitLeftEyeFromXrDisplay(XRDisplaySubsystem display)
@@ -191,7 +225,7 @@ namespace Unity.XR.XREAL.Samples
                 camera.enabled = previousEnabled;
             }
 
-            m_DebugInfo = $"Main camera fallback {width}x{height}";
+            m_DebugInfo = $"Main camera fallback {width}x{height} (not streamable XR output)";
             return true;
         }
 
@@ -292,7 +326,8 @@ namespace Unity.XR.XREAL.Samples
             GUI.color = previousColor;
 
             EnsureGuiStyles();
-            GUI.Label(new Rect(x, y, previewWidth, headerHeight), "Left Eye (One Pro view)", m_HeaderStyle);
+            var title = HasLiveXrFrame ? "Left Eye (actual XR output)" : "Left Eye (XR output unavailable)";
+            GUI.Label(new Rect(x, y, previewWidth, headerHeight), title, m_HeaderStyle);
 
             var previewRect = new Rect(x, y + headerHeight, previewWidth, previewHeight);
             if (texture != null)

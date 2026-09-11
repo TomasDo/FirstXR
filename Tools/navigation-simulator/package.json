@@ -1,0 +1,14 @@
+{
+  "name": "first-xr-dental-navigation-simulator",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Deterministic gRPC v2 simulator for the First XR dental navigation client",
+  "scripts": {
+    "start": "node server.js",
+    "smoke": "node smoke.js"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "1.14.4",
+    "@grpc/proto-loader": "0.8.1"
+  }
+}
