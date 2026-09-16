@@ -40,6 +40,9 @@ namespace Unity.XR.XREAL.Samples
         bool m_ShowDentalRobotBeamProPanel = true;
 
         [SerializeField]
+        bool m_ShowBeamProPagedUiInEditor = true;
+
+        [SerializeField]
         string m_DentalRobotServerHost = DentalRobotConnectionDefaults.ServerHost;
 
         [SerializeField]
@@ -88,6 +91,81 @@ namespace Unity.XR.XREAL.Samples
         const string k_EnableGestureLabel = "Enable Gesture";
         const string k_DisableGestureLabel = "Disable Gesture";
 
+        public bool EngineerMode => m_EngineerMode;
+        public bool ShowBeamProInputToggle => m_ShowBeamProInputToggle;
+        public bool ShowBeamProGestureToggle => m_ShowBeamProGestureToggle;
+        public bool ShowBeamProObjectMoveButtons => m_ShowBeamProObjectMoveButtons;
+        public bool ShowBeamProCheckPlaneAppearanceButtons => m_ShowBeamProCheckPlaneAppearanceButtons;
+        public bool GlassesControlWindowVisible => m_GlassesControlWindowVisible;
+        public bool IsHandInput => XREALPlugin.GetInputSource() == InputSource.Hands;
+
+        public bool HudVisible
+        {
+            get
+            {
+                var layout = DentalDisplayLayoutController.EnsureInstance();
+                return layout != null
+                    ? layout.HudVisible
+                    : DentalHudController.Instance == null || DentalHudController.Instance.HudVisible;
+            }
+        }
+
+        public bool ModelVisible
+        {
+            get
+            {
+                var layout = DentalDisplayLayoutController.EnsureInstance();
+                return layout != null
+                    ? layout.ModelVisible
+                    : DentalRobotModelRenderer.Instance == null || DentalRobotModelRenderer.Instance.WidgetVisible;
+            }
+        }
+
+        public bool HasLocalRgbPreview
+        {
+            get
+            {
+                EnsureRGBCameraFloatingWindowReference();
+                return m_RGBCameraFloatingWindow != null;
+            }
+        }
+
+        public bool LocalRgbPreviewVisible
+        {
+            get
+            {
+                EnsureRGBCameraFloatingWindowReference();
+                return m_RGBCameraFloatingWindow != null && m_RGBCameraFloatingWindow.IsWindowVisible;
+            }
+        }
+
+        public bool GestureRecognitionEnabled
+        {
+            get
+            {
+                EnsureRgbHandGestureRecognizer();
+                return m_RgbHandGestureRecognizer != null && m_RgbHandGestureRecognizer.RecognitionEnabled;
+            }
+        }
+
+        public bool HasReferenceTargets
+        {
+            get
+            {
+                EnsureReferenceCubeSpawnerReference();
+                return m_ReferenceCubeSpawner != null;
+            }
+        }
+
+        public bool HasCheckPlane
+        {
+            get
+            {
+                EnsureReferenceCubeSpawnerReference();
+                return m_ReferenceCubeSpawner != null && m_ReferenceCubeSpawner.HasCheckPlane;
+            }
+        }
+
         void Awake()
         {
             BeamProUnifiedLogWindow.EnsureInstance();
@@ -100,7 +178,19 @@ namespace Unity.XR.XREAL.Samples
                 m_RgbHandGestureRecognizer.SetRecognitionEnabled(m_EnableRgbGestureRecognition);
 
             EnsureDentalRobotBeamProPanel();
+            EnsureBeamProPagedController();
             ApplyProductSurfaceDefaults();
+        }
+
+        void EnsureBeamProPagedController()
+        {
+            if (!m_ShowDentalRobotBeamProPanel)
+                return;
+
+            var controller = GetComponent<BeamProPagedController>();
+            if (controller == null)
+                controller = gameObject.AddComponent<BeamProPagedController>();
+            controller.Configure(this, m_EngineerMode, m_ShowBeamProPagedUiInEditor);
         }
 
         private void Start()
@@ -248,6 +338,81 @@ namespace Unity.XR.XREAL.Samples
             ApplyGlassesControlWindowVisibility();
         }
 
+        public void SetHudVisibleFromBeamPro(bool visible)
+        {
+            var layout = DentalDisplayLayoutController.EnsureInstance();
+            if (layout != null)
+                layout.SetHudVisibleLocally(visible);
+            DentalHudController.EnsureInstance().SetHudVisible(visible);
+        }
+
+        public void SetModelVisibleFromBeamPro(bool visible)
+        {
+            var layout = DentalDisplayLayoutController.EnsureInstance();
+            if (layout != null)
+                layout.SetModelVisibleLocally(visible);
+            if (DentalRobotModelRenderer.Instance != null)
+                DentalRobotModelRenderer.Instance.SetWidgetVisible(visible);
+            if (DentalHudController.Instance != null)
+                DentalHudController.Instance.SetWidgetFrameVisible(visible);
+        }
+
+        public void ToggleBeamProInputSource()
+        {
+            if (IsHandInput)
+                ChangeToControllerInput();
+            else
+                ChangeToHandInput();
+        }
+
+        public void ToggleLocalRgbPreview()
+        {
+            EnsureRGBCameraFloatingWindowReference();
+            if (m_RGBCameraFloatingWindow == null)
+                return;
+
+            var show = !m_RGBCameraFloatingWindow.IsWindowVisible;
+            m_RGBCameraFloatingWindow.SetWindowVisible(show);
+            if (show)
+                m_RGBCameraFloatingWindow.StartCapture();
+            else
+                m_RGBCameraFloatingWindow.StopCapture();
+        }
+
+        public void ToggleGestureRecognition()
+        {
+            EnsureRgbHandGestureRecognizer();
+            if (m_RgbHandGestureRecognizer == null)
+                return;
+            m_RgbHandGestureRecognizer.ToggleRecognitionEnabled();
+            m_EnableRgbGestureRecognition = m_RgbHandGestureRecognizer.RecognitionEnabled;
+        }
+
+        public void MoveReferenceTargets(Vector3 direction)
+        {
+            EnsureReferenceCubeSpawnerReference();
+            if (m_ReferenceCubeSpawner != null)
+                m_ReferenceCubeSpawner.MoveTargetsByDirection(direction);
+        }
+
+        public void AdjustCheckPlaneTransparency(bool increaseTransparency)
+        {
+            EnsureReferenceCubeSpawnerReference();
+            if (m_ReferenceCubeSpawner == null || !m_ReferenceCubeSpawner.HasCheckPlane)
+                return;
+            if (increaseTransparency)
+                m_ReferenceCubeSpawner.IncreaseCheckPlaneTransparency();
+            else
+                m_ReferenceCubeSpawner.DecreaseCheckPlaneTransparency();
+        }
+
+        public void AdjustCheckPlaneColor(int channel, int delta)
+        {
+            EnsureReferenceCubeSpawnerReference();
+            if (m_ReferenceCubeSpawner != null && m_ReferenceCubeSpawner.HasCheckPlane)
+                m_ReferenceCubeSpawner.AdjustCheckPlaneColorChannel(channel, delta);
+        }
+
         void ApplyDefaultInputOnStart()
         {
             if (m_DefaultToHandInput)
@@ -354,6 +519,9 @@ namespace Unity.XR.XREAL.Samples
 
         void OnGUI()
         {
+            if (BeamProPagedController.IsActive)
+                return;
+
             if (Application.platform != RuntimePlatform.Android)
                 return;
 

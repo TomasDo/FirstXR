@@ -1,4 +1,4 @@
-apply plugin: 'android-library'
+apply plugin: 'com.android.library'
 
 dependencies {
     implementation fileTree(dir: 'bin', include: ['*.jar'])
@@ -20,14 +20,14 @@ android {
 
     // Keep these aligned with the Android settings used by this XREAL project. Unity copies a
     // library-local build.gradle verbatim and does not expand its template tokens.
-    compileSdkVersion 35
-    buildToolsVersion '34.0.0'
+    compileSdk 35
+    buildToolsVersion '36.0.0'
     defaultConfig {
-        minSdkVersion 29
-        targetSdkVersion 35
+        minSdk 29
+        targetSdk 35
     }
 
-    lintOptions {
+    lint {
         abortOnError false
     }
 }

@@ -1,0 +1,392 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="58" result="Passed" total="58" passed="58" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.1496586">
+  <test-suite type="TestSuite" id="1072" name="First XR" fullname="First XR" runstate="Runnable" testcasecount="58" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.149659" total="58" passed="58" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1064" name="DentalNavigation.Dicom.EditModeTests.dll" fullname="/Users/sad/code/Unity/First XR/Library/ScriptAssemblies/DentalNavigation.Dicom.EditModeTests.dll" runstate="Runnable" testcasecount="58" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.144948" total="58" passed="58" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="26261" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestSuite" id="1065" name="DentalNavigation" fullname="DentalNavigation" runstate="Runnable" testcasecount="58" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.144448" total="58" passed="58" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1066" name="Tests" fullname="DentalNavigation.Tests" runstate="Runnable" testcasecount="58" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.144022" total="58" passed="58" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1001" name="BeamProPageLayoutTests" fullname="DentalNavigation.Tests.BeamProPageLayoutTests" classname="DentalNavigation.Tests.BeamProPageLayoutTests" runstate="Runnable" testcasecount="11" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.018623" total="11" passed="11" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1007" name="AllInteractiveRowsMeetMinimumTouchHeightAndDoNotOverlapPeers" fullname="DentalNavigation.Tests.BeamProPageLayoutTests.AllInteractiveRowsMeetMinimumTouchHeightAndDoNotOverlapPeers" methodname="AllInteractiveRowsMeetMinimumTouchHeightAndDoNotOverlapPeers" classname="DentalNavigation.Tests.BeamProPageLayoutTests" runstate="Runnable" seed="1475476052" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.007955" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1008" name="BottomTabsAndContentRemainSeparateAt720By1600" fullname="DentalNavigation.Tests.BeamProPageLayoutTests.BottomTabsAndContentRemainSeparateAt720By1600" methodname="BottomTabsAndContentRemainSeparateAt720By1600" classname="DentalNavigation.Tests.BeamProPageLayoutTests" runstate="Runnable" seed="576606253" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000229" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1010" name="DebugAndUnknownPagesNormalizeToMonitorWhenUnavailable" fullname="DentalNavigation.Tests.BeamProPageLayoutTests.DebugAndUnknownPagesNormalizeToMonitorWhenUnavailable" methodname="DebugAndUnknownPagesNormalizeToMonitorWhenUnavailable" classname="DentalNavigation.Tests.BeamProPageLayoutTests" runstate="Runnable" seed="158385922" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000526" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1011" name="DebugPageCollapsesControlsDisabledByInspectorConfiguration" fullname="DentalNavigation.Tests.BeamProPageLayoutTests.DebugPageCollapsesControlsDisabledByInspectorConfiguration" methodname="DebugPageCollapsesControlsDisabledByInspectorConfiguration" classname="DentalNavigation.Tests.BeamProPageLayoutTests" runstate="Runnable" seed="711654969" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000794" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1009" name="ExtremelyLongHeaderIsClampedWithoutCoveringContentOrTabs" fullname="DentalNavigation.Tests.BeamProPageLayoutTests.ExtremelyLongHeaderIsClampedWithoutCoveringContentOrTabs" methodname="ExtremelyLongHeaderIsClampedWithoutCoveringContentOrTabs" classname="DentalNavigation.Tests.BeamProPageLayoutTests" runstate="Runnable" seed="1207331347" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000137" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1006" name="KeyboardInsetMovesTabsAboveKeyboardAndSubmitCanBeRevealed" fullname="DentalNavigation.Tests.BeamProPageLayoutTests.KeyboardInsetMovesTabsAboveKeyboardAndSubmitCanBeRevealed" methodname="KeyboardInsetMovesTabsAboveKeyboardAndSubmitCanBeRevealed" classname="DentalNavigation.Tests.BeamProPageLayoutTests" runstate="Runnable" seed="2139621128" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000261" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1003" name="LandscapePlacesPreviewAndMetricGridSideBySide" fullname="DentalNavigation.Tests.BeamProPageLayoutTests.LandscapePlacesPreviewAndMetricGridSideBySide" methodname="LandscapePlacesPreviewAndMetricGridSideBySide" classname="DentalNavigation.Tests.BeamProPageLayoutTests" runstate="Runnable" seed="1127842944" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000610" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1012" name="MeasuredWrappedTextHeightsExpandFinalBlocksAndScrollContent" fullname="DentalNavigation.Tests.BeamProPageLayoutTests.MeasuredWrappedTextHeightsExpandFinalBlocksAndScrollContent" methodname="MeasuredWrappedTextHeightsExpandFinalBlocksAndScrollContent" classname="DentalNavigation.Tests.BeamProPageLayoutTests" runstate="Runnable" seed="911938347" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000323" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1002" name="PortraitReferenceScreensUseTheSame540UnitGeometry" fullname="DentalNavigation.Tests.BeamProPageLayoutTests.PortraitReferenceScreensUseTheSame540UnitGeometry" methodname="PortraitReferenceScreensUseTheSame540UnitGeometry" classname="DentalNavigation.Tests.BeamProPageLayoutTests" runstate="Runnable" seed="1181746702" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000298" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1005" name="SafeAreaOffsetsPhysicalGeometryAndContainsFixedRegions" fullname="DentalNavigation.Tests.BeamProPageLayoutTests.SafeAreaOffsetsPhysicalGeometryAndContainsFixedRegions" methodname="SafeAreaOffsetsPhysicalGeometryAndContainsFixedRegions" classname="DentalNavigation.Tests.BeamProPageLayoutTests" runstate="Runnable" seed="446727983" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000365" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1004" name="ScrollableLandscapePagesReserveTheVerticalScrollbarWithoutHorizontalOverflow" fullname="DentalNavigation.Tests.BeamProPageLayoutTests.ScrollableLandscapePagesReserveTheVerticalScrollbarWithoutHorizontalOverflow" methodname="ScrollableLandscapePagesReserveTheVerticalScrollbarWithoutHorizontalOverflow" classname="DentalNavigation.Tests.BeamProPageLayoutTests" runstate="Runnable" seed="594362646" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000239" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1013" name="DentalDicomTests" fullname="DentalNavigation.Tests.DentalDicomTests" classname="DentalNavigation.Tests.DentalDicomTests" runstate="Runnable" testcasecount="17" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.100673" total="17" passed="17" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1021" name="AssetExpectation_ValidatesManifestSopAndFrameCount" fullname="DentalNavigation.Tests.DentalDicomTests.AssetExpectation_ValidatesManifestSopAndFrameCount" methodname="AssetExpectation_ValidatesManifestSopAndFrameCount" classname="DentalNavigation.Tests.DentalDicomTests" runstate="Runnable" seed="809639711" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.006043" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1029" name="AsyncDecode_DiscardsResultAfterNavigationContextChanges" fullname="DentalNavigation.Tests.DentalDicomTests.AsyncDecode_DiscardsResultAfterNavigationContextChanges" methodname="AsyncDecode_DiscardsResultAfterNavigationContextChanges" classname="DentalNavigation.Tests.DentalDicomTests" runstate="Runnable" seed="1042123285" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.051351" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1016" name="ChunkStore_IsolatesSameAssetIdAcrossTransferNamespaces" fullname="DentalNavigation.Tests.DentalDicomTests.ChunkStore_IsolatesSameAssetIdAcrossTransferNamespaces" methodname="ChunkStore_IsolatesSameAssetIdAcrossTransferNamespaces" classname="DentalNavigation.Tests.DentalDicomTests" runstate="Runnable" seed="450896782" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.003528" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1015" name="ChunkStore_RejectsConflictingRetryAndWrongDigest" fullname="DentalNavigation.Tests.DentalDicomTests.ChunkStore_RejectsConflictingRetryAndWrongDigest" methodname="ChunkStore_RejectsConflictingRetryAndWrongDigest" classname="DentalNavigation.Tests.DentalDicomTests" runstate="Runnable" seed="1439639083" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.001389" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1014" name="ChunkStore_ResumesOutOfOrderAndCompletesOnlyAfterHashMatches" fullname="DentalNavigation.Tests.DentalDicomTests.ChunkStore_ResumesOutOfOrderAndCompletesOnlyAfterHashMatches" methodname="ChunkStore_ResumesOutOfOrderAndCompletesOnlyAfterHashMatches" classname="DentalNavigation.Tests.DentalDicomTests" runstate="Runnable" seed="242098813" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.004242" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1020" name="Decoder_ReadsAllFramesFromUncompressedMultiFrameInstance" fullname="DentalNavigation.Tests.DentalDicomTests.Decoder_ReadsAllFramesFromUncompressedMultiFrameInstance" methodname="Decoder_ReadsAllFramesFromUncompressedMultiFrameInstance" classname="DentalNavigation.Tests.DentalDicomTests" runstate="Runnable" seed="1568181471" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000713" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1018" name="Decoder_ReadsSignedStoredBitsRescaleAndGeometry" fullname="DentalNavigation.Tests.DentalDicomTests.Decoder_ReadsSignedStoredBitsRescaleAndGeometry" methodname="Decoder_ReadsSignedStoredBitsRescaleAndGeometry" classname="DentalNavigation.Tests.DentalDicomTests" runstate="Runnable" seed="791272340" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000572" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1019" name="Decoder_RejectsUnsupportedTransferSyntax" fullname="DentalNavigation.Tests.DentalDicomTests.Decoder_RejectsUnsupportedTransferSyntax" methodname="Decoder_RejectsUnsupportedTransferSyntax" classname="DentalNavigation.Tests.DentalDicomTests" runstate="Runnable" seed="70126978" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000244" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1028" name="LatestSliceQueue_KeepsOneWorkerAndOnlyDeliversNewestRequest" fullname="DentalNavigation.Tests.DentalDicomTests.LatestSliceQueue_KeepsOneWorkerAndOnlyDeliversNewestRequest" methodname="LatestSliceQueue_KeepsOneWorkerAndOnlyDeliversNewestRequest" classname="DentalNavigation.Tests.DentalDicomTests" runstate="Runnable" seed="1571818012" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.005235" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1026" name="PatientPlane_UsesBuccalUpAndMesialLeftContract" fullname="DentalNavigation.Tests.DentalDicomTests.PatientPlane_UsesBuccalUpAndMesialLeftContract" methodname="PatientPlane_UsesBuccalUpAndMesialLeftContract" classname="DentalNavigation.Tests.DentalDicomTests" runstate="Runnable" seed="1556819042" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.001137" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1025" name="SliceCache_RendersWindowedPixelsAndReturnsCachedBuffer" fullname="DentalNavigation.Tests.DentalDicomTests.SliceCache_RendersWindowedPixelsAndReturnsCachedBuffer" methodname="SliceCache_RendersWindowedPixelsAndReturnsCachedBuffer" classname="DentalNavigation.Tests.DentalDicomTests" runstate="Runnable" seed="2124490502" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.002809" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1030" name="SliceCoordinator_AppliesDefaultAndOnlyReappliesNewRemoteControlVersions" fullname="DentalNavigation.Tests.DentalDicomTests.SliceCoordinator_AppliesDefaultAndOnlyReappliesNewRemoteControlVersions" methodname="SliceCoordinator_AppliesDefaultAndOnlyReappliesNewRemoteControlVersions" classname="DentalNavigation.Tests.DentalDicomTests" runstate="Runnable" seed="1566242339" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.013094" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[DentalCtSliceCoordinator: 导航端切片序号超出当前 CT 范围。
+]]></output>
+            </test-case>
+            <test-case id="1027" name="TextureCache_CreatesReusableUnityTexture" fullname="DentalNavigation.Tests.DentalDicomTests.TextureCache_CreatesReusableUnityTexture" methodname="TextureCache_CreatesReusableUnityTexture" classname="DentalNavigation.Tests.DentalDicomTests" runstate="Runnable" seed="777143041" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000545" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1024" name="Volume_RejectsDuplicateSopFramesAndMixedSeries" fullname="DentalNavigation.Tests.DentalDicomTests.Volume_RejectsDuplicateSopFramesAndMixedSeries" methodname="Volume_RejectsDuplicateSopFramesAndMixedSeries" classname="DentalNavigation.Tests.DentalDicomTests" runstate="Runnable" seed="778537575" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000323" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1023" name="Volume_RejectsShiftedSliceOriginsItCannotRepresent" fullname="DentalNavigation.Tests.DentalDicomTests.Volume_RejectsShiftedSliceOriginsItCannotRepresent" methodname="Volume_RejectsShiftedSliceOriginsItCannotRepresent" classname="DentalNavigation.Tests.DentalDicomTests" runstate="Runnable" seed="654836516" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000320" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1022" name="Volume_SortsPhysicalSlicesAndSamplesPatientCoordinates" fullname="DentalNavigation.Tests.DentalDicomTests.Volume_SortsPhysicalSlicesAndSamplesPatientCoordinates" methodname="Volume_SortsPhysicalSlicesAndSamplesPatientCoordinates" classname="DentalNavigation.Tests.DentalDicomTests" runstate="Runnable" seed="1175733796" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000330" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1017" name="VolumeService_RejectsChunksFromStaleTransferGeneration" fullname="DentalNavigation.Tests.DentalDicomTests.VolumeService_RejectsChunksFromStaleTransferGeneration" methodname="VolumeService_RejectsChunksFromStaleTransferGeneration" classname="DentalNavigation.Tests.DentalDicomTests" runstate="Runnable" seed="1707669294" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.003234" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1031" name="DentalNavigationBandTests" fullname="DentalNavigation.Tests.DentalNavigationBandTests" classname="DentalNavigation.Tests.DentalNavigationBandTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.006679" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1034" name="InclusiveAndExclusiveRulesDifferExactlyAtBoundary" fullname="DentalNavigation.Tests.DentalNavigationBandTests.InclusiveAndExclusiveRulesDifferExactlyAtBoundary" methodname="InclusiveAndExclusiveRulesDifferExactlyAtBoundary" classname="DentalNavigation.Tests.DentalNavigationBandTests" runstate="Runnable" seed="136920017" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.001709" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1032" name="MissingThresholdsNeverShowGreenButKeepMeasuredNumbers" fullname="DentalNavigation.Tests.DentalNavigationBandTests.MissingThresholdsNeverShowGreenButKeepMeasuredNumbers" methodname="MissingThresholdsNeverShowGreenButKeepMeasuredNumbers" classname="DentalNavigation.Tests.DentalNavigationBandTests" runstate="Runnable" seed="7695488" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000187" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1035" name="NegativeRemainingDepthPreservesSmallOverrunAndEscalatesAtConfiguredLimit" fullname="DentalNavigation.Tests.DentalNavigationBandTests.NegativeRemainingDepthPreservesSmallOverrunAndEscalatesAtConfiguredLimit" methodname="NegativeRemainingDepthPreservesSmallOverrunAndEscalatesAtConfiguredLimit" classname="DentalNavigation.Tests.DentalNavigationBandTests" runstate="Runnable" seed="1549628208" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000226" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1033" name="PositionAndAngleAreEvaluatedIndependently" fullname="DentalNavigation.Tests.DentalNavigationBandTests.PositionAndAngleAreEvaluatedIndependently" methodname="PositionAndAngleAreEvaluatedIndependently" classname="DentalNavigation.Tests.DentalNavigationBandTests" runstate="Runnable" seed="1475773540" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000192" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1036" name="DentalProtocolStateTests" fullname="DentalNavigation.Tests.DentalProtocolStateTests" classname="DentalNavigation.Tests.DentalProtocolStateTests" runstate="Runnable" testcasecount="16" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.009752" total="16" passed="16" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1049" name="ContextRejectsMalformedOrScaledCoordinateTransforms" fullname="DentalNavigation.Tests.DentalProtocolStateTests.ContextRejectsMalformedOrScaledCoordinateTransforms" methodname="ContextRejectsMalformedOrScaledCoordinateTransforms" classname="DentalNavigation.Tests.DentalProtocolStateTests" runstate="Runnable" seed="1127923511" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000733" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1039" name="ContextVersionAndFrameSequenceRejectStaleData" fullname="DentalNavigation.Tests.DentalProtocolStateTests.ContextVersionAndFrameSequenceRejectStaleData" methodname="ContextVersionAndFrameSequenceRejectStaleData" classname="DentalNavigation.Tests.DentalProtocolStateTests" runstate="Runnable" seed="194368365" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000376" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1044" name="DirectionComponentsMustMatchAuthoritativeMagnitude" fullname="DentalNavigation.Tests.DentalProtocolStateTests.DirectionComponentsMustMatchAuthoritativeMagnitude" methodname="DirectionComponentsMustMatchAuthoritativeMagnitude" classname="DentalNavigation.Tests.DentalProtocolStateTests" runstate="Runnable" seed="893635684" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000137" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1045" name="DynamicNumbersHideAfterFiveHundredMilliseconds" fullname="DentalNavigation.Tests.DentalProtocolStateTests.DynamicNumbersHideAfterFiveHundredMilliseconds" methodname="DynamicNumbersHideAfterFiveHundredMilliseconds" classname="DentalNavigation.Tests.DentalProtocolStateTests" runstate="Runnable" seed="1311482891" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000144" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1048" name="FrameTargetDepthMustMatchCurrentStepContext" fullname="DentalNavigation.Tests.DentalProtocolStateTests.FrameTargetDepthMustMatchCurrentStepContext" methodname="FrameTargetDepthMustMatchCurrentStepContext" classname="DentalNavigation.Tests.DentalProtocolStateTests" runstate="Runnable" seed="753563484" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000142" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1050" name="InvalidDrillTransformMakesFrameInvalid" fullname="DentalNavigation.Tests.DentalProtocolStateTests.InvalidDrillTransformMakesFrameInvalid" methodname="InvalidDrillTransformMakesFrameInvalid" classname="DentalNavigation.Tests.DentalProtocolStateTests" runstate="Runnable" seed="2126031044" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000181" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1040" name="InvalidFrameKeepsReasonButHidesDynamicValues" fullname="DentalNavigation.Tests.DentalProtocolStateTests.InvalidFrameKeepsReasonButHidesDynamicValues" methodname="InvalidFrameKeepsReasonButHidesDynamicValues" classname="DentalNavigation.Tests.DentalProtocolStateTests" runstate="Runnable" seed="528571748" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000171" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1047" name="InvalidUnixTimestampCannotOverflowIntoAFreshFrame" fullname="DentalNavigation.Tests.DentalProtocolStateTests.InvalidUnixTimestampCannotOverflowIntoAFreshFrame" methodname="InvalidUnixTimestampCannotOverflowIntoAFreshFrame" classname="DentalNavigation.Tests.DentalProtocolStateTests" runstate="Runnable" seed="1171025008" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000126" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1052" name="LegacyMetadataDoesNotInventDirectionalOrDepthBreakdownData" fullname="DentalNavigation.Tests.DentalProtocolStateTests.LegacyMetadataDoesNotInventDirectionalOrDepthBreakdownData" methodname="LegacyMetadataDoesNotInventDirectionalOrDepthBreakdownData" classname="DentalNavigation.Tests.DentalProtocolStateTests" runstate="Runnable" seed="1416364121" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000822" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[DentalNavigationState: first metadata dataset=legacy, remainingDepthMm=4, lateralMm=0.5, angleDeg=2
+]]></output>
+            </test-case>
+            <test-case id="1042" name="OldSessionUnitErrorCannotClearCurrentThresholds" fullname="DentalNavigation.Tests.DentalProtocolStateTests.OldSessionUnitErrorCannotClearCurrentThresholds" methodname="OldSessionUnitErrorCannotClearCurrentThresholds" classname="DentalNavigation.Tests.DentalProtocolStateTests" runstate="Runnable" seed="1528907494" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000181" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1038" name="ProtoSlicePlaneExplicitlyDistinguishesNativeIndexFromPhysicalPlane" fullname="DentalNavigation.Tests.DentalProtocolStateTests.ProtoSlicePlaneExplicitlyDistinguishesNativeIndexFromPhysicalPlane" methodname="ProtoSlicePlaneExplicitlyDistinguishesNativeIndexFromPhysicalPlane" classname="DentalNavigation.Tests.DentalProtocolStateTests" runstate="Runnable" seed="1857429906" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.001375" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1051" name="SliceStateRejectsUnspecifiedSourceAndInvalidPhysicalPlane" fullname="DentalNavigation.Tests.DentalProtocolStateTests.SliceStateRejectsUnspecifiedSourceAndInvalidPhysicalPlane" methodname="SliceStateRejectsUnspecifiedSourceAndInvalidPhysicalPlane" classname="DentalNavigation.Tests.DentalProtocolStateTests" runstate="Runnable" seed="1059026843" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000187" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1046" name="SourceCaptureTimestampContributesToFrameAge" fullname="DentalNavigation.Tests.DentalProtocolStateTests.SourceCaptureTimestampContributesToFrameAge" methodname="SourceCaptureTimestampContributesToFrameAge" classname="DentalNavigation.Tests.DentalProtocolStateTests" runstate="Runnable" seed="1990150685" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000151" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1041" name="ThresholdsMustMatchContextAndAreIdempotentByVersion" fullname="DentalNavigation.Tests.DentalProtocolStateTests.ThresholdsMustMatchContextAndAreIdempotentByVersion" methodname="ThresholdsMustMatchContextAndAreIdempotentByVersion" classname="DentalNavigation.Tests.DentalProtocolStateTests" runstate="Runnable" seed="640321321" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000217" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1043" name="ThresholdsRejectZeroVersionAndLockingHysteresis" fullname="DentalNavigation.Tests.DentalProtocolStateTests.ThresholdsRejectZeroVersionAndLockingHysteresis" methodname="ThresholdsRejectZeroVersionAndLockingHysteresis" classname="DentalNavigation.Tests.DentalProtocolStateTests" runstate="Runnable" seed="2068405822" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000124" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1037" name="V1WireFieldNumbersRemainStableAndV2UsesDistinctEndSignals" fullname="DentalNavigation.Tests.DentalProtocolStateTests.V1WireFieldNumbersRemainStableAndV2UsesDistinctEndSignals" methodname="V1WireFieldNumbersRemainStableAndV2UsesDistinctEndSignals" classname="DentalNavigation.Tests.DentalProtocolStateTests" runstate="Runnable" seed="1870862203" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000226" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1053" name="RgbGestureStreamingTests" fullname="DentalNavigation.Tests.RgbGestureStreamingTests" classname="DentalNavigation.Tests.RgbGestureStreamingTests" runstate="Runnable" testcasecount="10" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.006933" total="10" passed="10" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1058" name="ExplicitTrackingLossRequiresReleaseBeforeRearming" fullname="DentalNavigation.Tests.RgbGestureStreamingTests.ExplicitTrackingLossRequiresReleaseBeforeRearming" methodname="ExplicitTrackingLossRequiresReleaseBeforeRearming" classname="DentalNavigation.Tests.RgbGestureStreamingTests" runstate="Runnable" seed="1708430814" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000369" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1062" name="HeadMotionFreezesAndRebasesBeforeAnotherStep" fullname="DentalNavigation.Tests.RgbGestureStreamingTests.HeadMotionFreezesAndRebasesBeforeAnotherStep" methodname="HeadMotionFreezesAndRebasesBeforeAnotherStep" classname="DentalNavigation.Tests.RgbGestureStreamingTests" runstate="Runnable" seed="241967663" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000190" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1056" name="HeldOk_ActivatesAfter300Ms_AndStationaryHandDoesNotRepeat" fullname="DentalNavigation.Tests.RgbGestureStreamingTests.HeldOk_ActivatesAfter300Ms_AndStationaryHandDoesNotRepeat" methodname="HeldOk_ActivatesAfter300Ms_AndStationaryHandDoesNotRepeat" classname="DentalNavigation.Tests.RgbGestureStreamingTests" runstate="Runnable" seed="250520860" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000355" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1054" name="LandmarkAnalyzer_RecognizesOkAndReportsPalmPosition" fullname="DentalNavigation.Tests.RgbGestureStreamingTests.LandmarkAnalyzer_RecognizesOkAndReportsPalmPosition" methodname="LandmarkAnalyzer_RecognizesOkAndReportsPalmPosition" classname="DentalNavigation.Tests.RgbGestureStreamingTests" runstate="Runnable" seed="1186093329" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000855" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1055" name="LandmarkAnalyzer_RejectsLowConfidenceOrOpenTips" fullname="DentalNavigation.Tests.RgbGestureStreamingTests.LandmarkAnalyzer_RejectsLowConfidenceOrOpenTips" methodname="LandmarkAnalyzer_RejectsLowConfidenceOrOpenTips" classname="DentalNavigation.Tests.RgbGestureStreamingTests" runstate="Runnable" seed="1234011986" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000085" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1059" name="NavigationTakeoverCancelsOldGestureAndCarriesNewVersion" fullname="DentalNavigation.Tests.RgbGestureStreamingTests.NavigationTakeoverCancelsOldGestureAndCarriesNewVersion" methodname="NavigationTakeoverCancelsOldGestureAndCarriesNewVersion" classname="DentalNavigation.Tests.RgbGestureStreamingTests" runstate="Runnable" seed="833423694" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000524" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1061" name="NewContextClearsOldControlVersionAndRequiresRelease" fullname="DentalNavigation.Tests.RgbGestureStreamingTests.NewContextClearsOldControlVersionAndRequiresRelease" methodname="NewContextClearsOldControlVersionAndRequiresRelease" classname="DentalNavigation.Tests.RgbGestureStreamingTests" runstate="Runnable" seed="904637366" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000080" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1057" name="ReleaseStopsImmediately_AndFrameLossStopsWithin200Ms" fullname="DentalNavigation.Tests.RgbGestureStreamingTests.ReleaseStopsImmediately_AndFrameLossStopsWithin200Ms" methodname="ReleaseStopsImmediately_AndFrameLossStopsWithin200Ms" classname="DentalNavigation.Tests.RgbGestureStreamingTests" runstate="Runnable" seed="1535748232" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000143" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1063" name="RuntimeProviderIsExplicitlyUnavailableWithoutRegisteredBridge" fullname="DentalNavigation.Tests.RgbGestureStreamingTests.RuntimeProviderIsExplicitlyUnavailableWithoutRegisteredBridge" methodname="RuntimeProviderIsExplicitlyUnavailableWithoutRegisteredBridge" classname="DentalNavigation.Tests.RgbGestureStreamingTests" runstate="Runnable" seed="620859001" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000080" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1060" name="XrealEchoAdvancesVersionWithoutCancellingHeldGesture" fullname="DentalNavigation.Tests.RgbGestureStreamingTests.XrealEchoAdvancesVersionWithoutCancellingHeldGesture" methodname="XrealEchoAdvancesVersionWithoutCancellingHeldGesture" classname="DentalNavigation.Tests.RgbGestureStreamingTests" runstate="Runnable" seed="1289391922" result="Passed" start-time="2026-09-16 08:28:34Z" end-time="2026-09-16 08:28:34Z" duration="0.000134" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[Saving results to: /Users/sad/Library/Application Support/DefaultCompany/First XR/TestResults.xml
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

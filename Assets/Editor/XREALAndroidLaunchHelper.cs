@@ -57,6 +57,10 @@ namespace Unity.XR.XREAL.Editor
             {
                 UnityEngine.Debug.Log($"XREAL: APK built at {report.summary.outputPath}. Use XREAL > Launch App On Android Device to install and run.");
             }
+            else
+            {
+                throw new BuildFailedException($"XREAL: Android build ended with {report.summary.result}. See the build log for details.");
+            }
         }
 
         public void OnPostprocessBuild(BuildReport report)

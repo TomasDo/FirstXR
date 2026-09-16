@@ -1,0 +1,22 @@
+apply plugin: 'com.android.library'
+
+android {
+    namespace 'com.firstxr.camerapermission'
+    compileSdk 36
+    buildToolsVersion '36.0.0'
+
+    defaultConfig {
+        minSdk 29
+        targetSdk 36
+    }
+
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+        }
+    }
+
+    lint {
+        abortOnError false
+    }
+}

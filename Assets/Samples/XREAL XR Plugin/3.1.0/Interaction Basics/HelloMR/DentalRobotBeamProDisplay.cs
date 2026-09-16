@@ -57,6 +57,12 @@ namespace Unity.XR.XREAL.Samples
         public static DentalRobotBeamProDisplay Instance => s_Instance;
 
         public string ServerAddress => $"{m_ServerHost}:{m_ServerPort}";
+        public string ServerHost => m_ServerHost;
+        public int ServerPort => m_ServerPort;
+        public string ConnectionStatus => m_Status;
+        public string TransferSummary => m_HasTransferEnd
+            ? $"模型 {(m_LastTransferOk ? "完成" : "失败")} · teeth {m_TeethBytes} B · drill {m_DrillBytes} B"
+            : m_Status;
 
         public void ConfigureEndpoint(string serverHost, int serverPort, string deviceId, string datasetId)
         {
@@ -94,6 +100,12 @@ namespace Unity.XR.XREAL.Samples
         {
             if (s_Instance == this)
                 s_Instance = null;
+        }
+
+        void Update()
+        {
+            // Status publication must not depend on which Beam Pro page is visible.
+            PublishStatusSummary();
         }
 
         public void SetConnectionStatus(string status)
@@ -158,11 +170,12 @@ namespace Unity.XR.XREAL.Samples
             if (!m_ShowOnBeamPro || Application.platform != RuntimePlatform.Android)
                 return;
 
+            if (BeamProPagedController.IsActive)
+                return;
+
             DrawEndpointControls();
             if (!BeamProUnifiedLogWindow.IsVisible)
                 DrawDashboard();
-
-            PublishStatusSummary();
         }
 
         void PublishStatusSummary()
@@ -304,32 +317,43 @@ namespace Unity.XR.XREAL.Samples
                 StartEndpointSearch();
         }
 
-        void StartEndpointSearch()
+        public bool TryStartEndpointSearch(string hostText, string portText, out string result)
         {
-            var host = (m_EditableServerHost ?? string.Empty).Trim();
+            var host = (hostText ?? string.Empty).Trim();
             if (!IPAddress.TryParse(host, out var address) || address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
             {
-                SetConnectionStatus("请输入有效的 IPv4 地址。");
-                return;
+                result = "请输入有效的 IPv4 地址。";
+                SetConnectionStatus(result);
+                return false;
             }
 
-            if (!int.TryParse(m_EditableServerPort, out var port) || port < 1 || port > 65535)
+            if (!int.TryParse(portText, out var port) || port < 1 || port > 65535)
             {
-                SetConnectionStatus("端口号必须在 1-65535 之间。");
-                return;
+                result = "端口号必须在 1-65535 之间。";
+                SetConnectionStatus(result);
+                return false;
             }
 
             ConfigureEndpoint(host, port, m_DeviceId, m_DatasetId);
 
-            var client = FindObjectOfType<DentalRobotGrpcClient>();
+            var client = FindFirstObjectByType<DentalRobotGrpcClient>();
             if (client == null)
             {
-                SetConnectionStatus("未找到 DentalRobotGrpcClient。");
-                return;
+                result = "未找到 DentalRobotGrpcClient。";
+                SetConnectionStatus(result);
+                return false;
             }
 
             AppendLog($"手动搜索 gRPC 服务端 {ServerAddress}");
+            result = $"正在连接 {ServerAddress}";
+            SetConnectionStatus(result);
             client.SearchEndpoint(m_ServerHost, m_ServerPort);
+            return true;
+        }
+
+        void StartEndpointSearch()
+        {
+            TryStartEndpointSearch(m_EditableServerHost, m_EditableServerPort, out _);
         }
 
         void EnsureEndpointStyles()

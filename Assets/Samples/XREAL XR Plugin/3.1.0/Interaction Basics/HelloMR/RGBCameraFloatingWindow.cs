@@ -26,6 +26,7 @@ namespace Unity.XR.XREAL.Samples
         bool m_WindowVisible;
         bool m_LegacyCaptureLease;
         bool m_ReceivedFirstCameraFrame;
+        float m_NextBeamProStatusRealtime;
 
         void Awake()
         {
@@ -145,7 +146,8 @@ namespace Unity.XR.XREAL.Samples
             if (FindObjectOfType<RgbSliceGestureController>() == null)
                 gameObject.AddComponent<RgbSliceGestureController>();
 
-            recognizer.SetRecognitionEnabled(true);
+            // HelloMR owns the configured enabled state. This component only guarantees that the
+            // shared recognizer and slice controller exist, avoiding Awake-order configuration races.
         }
 
         void CreateFloatingWindow(Camera camera)
@@ -208,10 +210,13 @@ namespace Unity.XR.XREAL.Samples
             }
         }
 
-        void OnGUI()
+        void Update()
         {
             if (!m_ShowDebugOnBeamPro || Application.platform != RuntimePlatform.Android)
                 return;
+            if (Time.realtimeSinceStartup < m_NextBeamProStatusRealtime)
+                return;
+            m_NextBeamProStatusRealtime = Time.realtimeSinceStartup + 1f;
             var state = m_CameraService == null ? "not ready" :
                 $"capture={m_CameraService.IsCapturing}, consumers={m_CameraService.ConsumerCount}, plug={m_CameraService.PlugState}";
             BeamProUnifiedLogWindow.SetStatus("RGB 相机", state);

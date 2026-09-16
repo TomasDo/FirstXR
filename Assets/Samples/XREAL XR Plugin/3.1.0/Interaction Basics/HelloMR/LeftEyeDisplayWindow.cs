@@ -30,12 +30,14 @@ namespace Unity.XR.XREAL.Samples
         XRDisplaySubsystem m_DisplaySubsystem;
         RenderTexture m_PreviewTexture;
         Material m_ArraySliceMaterial;
-        string m_StatusMessage = "Initializing left eye preview...";
+        string m_StatusMessage = "正在初始化眼镜左眼预览…";
         string m_DebugInfo;
         bool m_LastFrameIsXrDisplay;
         double m_LastXrFrameTime;
 
         public RenderTexture PreviewTexture => m_PreviewTexture;
+        public string PreviewStatusMessage => m_StatusMessage;
+        public string PreviewDebugInfo => m_DebugInfo;
         public bool HasLiveXrFrame => m_LastFrameIsXrDisplay
             && Time.realtimeSinceStartupAsDouble - m_LastXrFrameTime <= 0.25;
         public event Action<RenderTexture> XrFrameUpdated;
@@ -89,7 +91,7 @@ namespace Unity.XR.XREAL.Samples
             }
 
             if (m_DisplaySubsystem == null)
-                m_StatusMessage = "XRDisplaySubsystem not available.";
+                m_StatusMessage = "XR 左眼画面不可用。";
 
             while (enabled)
             {
@@ -114,14 +116,16 @@ namespace Unity.XR.XREAL.Samples
                 return;
             }
 
-            if (m_FallbackToMainCameraRender && TryRenderMainCameraPreview())
+            if (m_FallbackToMainCameraRender
+                && !BeamProPagedController.IsActive
+                && TryRenderMainCameraPreview())
             {
                 m_LastFrameIsXrDisplay = false;
                 return;
             }
 
             m_LastFrameIsXrDisplay = false;
-            m_DebugInfo = "No left eye frame available.";
+            m_DebugInfo = "没有可用的 XR 左眼帧。";
         }
 
         public bool TryGetLiveXrFrame(out RenderTexture texture)
@@ -290,6 +294,9 @@ namespace Unity.XR.XREAL.Samples
         void OnGUI()
         {
             if (!m_ShowOnBeamPro || Application.platform != RuntimePlatform.Android)
+                return;
+
+            if (BeamProPagedController.IsActive)
                 return;
 
             var texture = m_PreviewTexture;

@@ -21,6 +21,7 @@ sysinfo.txt
 *.csproj
 *.unityproj
 *.sln
+*.slnx
 *.suo
 *.tmp
 *.user
@@ -67,6 +68,7 @@ ignore.conf
 
 # Gradle (Android)
 .gradle/
+/.utmp/
 **/gradle-build/
 
 # Local simulator dependencies

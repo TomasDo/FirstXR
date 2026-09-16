@@ -29,6 +29,8 @@ namespace Unity.XR.XREAL.Samples
 
         public static bool IsVisible => s_Visible;
 
+        public static string SnapshotText => BuildLogText();
+
         public static void SetVisible(bool visible)
         {
             s_Visible = visible;
@@ -66,7 +68,10 @@ namespace Unity.XR.XREAL.Samples
 
         static SourceLog GetSourceLog(string source)
         {
-            EnsureInstance();
+            // Logging must remain safe during scene teardown. The visual component is created
+            // explicitly by HelloMR during startup; status writers only update the static buffer.
+            // Creating a GameObject here would resurrect the window when another service reports
+            // its final status from OnDestroy.
             source = string.IsNullOrEmpty(source) ? "Log" : source;
 
             if (!s_SourceLogs.TryGetValue(source, out var log))
@@ -101,6 +106,9 @@ namespace Unity.XR.XREAL.Samples
             if (!s_Visible || Application.platform != RuntimePlatform.Android)
                 return;
 
+            if (BeamProPagedController.IsActive)
+                return;
+
             EnsureStyles();
             var rect = BeamProOverlayLayout.GetMainLogRect(BeamProOverlayLayout.MaxButtonRows);
 
@@ -124,7 +132,7 @@ namespace Unity.XR.XREAL.Samples
             GUI.EndScrollView();
         }
 
-        string BuildLogText()
+        static string BuildLogText()
         {
             if (s_SourceOrder.Count == 0)
                 return "暂无日志";

@@ -1,6 +1,6 @@
 # First XR
 
-基于 **Unity 2022.3.62f3c1** 与 **XREAL XR Plugin 3.1.0** 的口腔种植导航客户端，主场景为 **HelloMR**。医生低头观察术野时，XREAL 视野下方同时显示 CT 横断切片、固定颊舌/近远中方向的圆形靶标、横向与角度偏差方向、量化数值和竖向深度尺。Beam Pro 显示相同导航状态及真实 XR 左眼画面，导航软件可按需打开医生 RGB 视角。
+基于 **Unity 6.0 LTS（6000.0.83f1）** 与 **XREAL XR Plugin 3.1.0** 的口腔种植导航客户端，主场景为 **HelloMR**。医生低头观察术野时，XREAL 视野下方同时显示 CT 横断切片、固定颊舌/近远中方向的圆形靶标、横向与角度偏差方向、量化数值和竖向深度尺。Beam Pro 显示相同导航状态及真实 XR 左眼画面，导航软件可按需打开医生 RGB 视角。
 
 当前实现对应 `dental_model_transfer.proto` v2：导航/控制、DICOM/STL 资产、媒体分别走独立通道。v1 服务仍可连接，但缺少方向、阈值或 CT 时界面会明确显示能力缺失，不会从旧标量猜测完整导航。协议和联调细节见 [`Docs/DentalNavigationV2Interface.md`](Docs/DentalNavigationV2Interface.md)。
 
@@ -8,13 +8,18 @@
 
 | 项目 | 说明 |
 |------|------|
-| Unity | 2022.3 LTS（与 XREAL Plugin 要求一致） |
+| Unity | 6.0 LTS，固定 `6000.0.83f1`；Apple Silicon Mac 使用 ARM64 编辑器 |
+| Android 工具 | Unity Hub 安装 Android Build Support、SDK & NDK Tools、OpenJDK；使用编辑器自带的 JDK 17、NDK r27c、SDK Build Tools 36.0.0 |
 | 平台 | Android（`minSdk 29`） |
 | 硬件 | XREAL 眼镜 + Beam Pro（或支持 adb 的 Android 设备） |
 | 硬件 | XREAL Eye（离线 OK 手势与按需 RGB 回传需要） |
 | 可选 | 手术机器人 gRPC 服务端（默认 `192.168.31.166:50051`） |
 
 主要依赖：`com.xreal.xr`、`com.unity.xr.hands`、`com.unity.xr.interaction.toolkit`、`com.unity.xr.arfoundation`、固定版本 `com.google.mediapipe:tasks-vision:1.0.0`，以及 `Assets/Plugins/Grpc/` 下的 gRPC / Protobuf 运行时。MediaPipe 模型随 APK 打包，运行时不访问网络。
+
+XR 包保持与已有场景和 Samples 匹配：AR Foundation `6.0.8`、XR Interaction Toolkit `2.6.5`、XR Hands `1.5.1`。不要只升级 XR Interaction Toolkit 或 XR Hands 而不迁移对应 Samples。Apple Silicon Mac 需安装 Rosetta，以运行当前编辑器工具链中的 Intel 组件。在 **Unity → Settings → External Tools** 中启用 Unity 自带的 JDK、SDK、NDK 和 Gradle。
+
+本机升级内容、验证结果及备份位置见 [`Docs/Unity6Migration.md`](Docs/Unity6Migration.md)。
 
 Android 权限（`Assets/Plugins/Android/CameraPermission.androidlib/AndroidManifest.xml`）：
 
@@ -24,9 +29,10 @@ Android 权限（`Assets/Plugins/Android/CameraPermission.androidlib/AndroidMani
 ## 快速开始
 
 1. 用 Unity 打开本仓库。
-2. 确认 **Build Settings** 中已启用场景：  
+2. 确认 **File → Build Profiles** 的 Android 平台及场景列表中已启用场景：
+
    `Assets/Samples/XREAL XR Plugin/3.1.0/Interaction Basics/HelloMR/HelloMR.unity`
-3. 如需连接手术机器人，在 `DentalRobotConnectionDefaults.cs` 中修改默认 IP / 端口，或在真机 Beam Pro 顶部输入后点 **开始搜索**。
+3. 如需连接手术机器人，在 `DentalRobotConnectionDefaults.cs` 中修改默认 IP / 端口，或在 Beam Pro **连接**页填写后点 **连接**。
 4. 连接 Beam Pro，开启 USB 调试，在 Unity 中选择 **Run Device**。
 5. 构建并运行：
    - **File → Build And Run**（若 Unity 启动报 NullReferenceException，APK 通常已成功生成，见下方「构建与部署」）
@@ -63,7 +69,7 @@ npm start -- --port 50051 --dicom-dir /absolute/path/to/explicit-vr-dicom
 
 三维模型是独立头锁定观察窗口，种植时默认隐藏；导航端可独立移动、显隐并恢复默认位置。它是观察窗口，不表示配准到真牙上的叠加。
 
-Beam Pro 右侧默认两键：**Show/Hide HUD**、**Show/Hide Nav Widget**。HelloMR 勾选 **Engineer Mode** 后恢复调试按钮与统一日志。
+Beam Pro 默认打开**监看**页，可切换 HUD 和三维模型显隐；HelloMR 勾选 **Engineer Mode** 后底部增加**调试**页。
 
 ### 追踪模式（Tracking）
 
@@ -85,7 +91,7 @@ Beam Pro 右侧默认两键：**Show/Hide HUD**、**Show/Hide Nav Widget**。Hel
 
 启动默认：**Controller**。
 
-产品模式 Beam Pro 不显示输入切换。勾选 HelloMR **Engineer Mode** 后，右侧可切换 Controller / Hand；眼镜端 Canvas 也有 **Controller / Hand** 按钮。
+产品模式 Beam Pro 不显示输入切换。勾选 HelloMR **Engineer Mode** 且启用对应 Inspector 配置后，可在**调试**页切换 Controller / Hand；眼镜端 Canvas 也有 **Controller / Hand** 按钮。
 
 ### RGB 相机浮动窗口
 
@@ -94,7 +100,7 @@ Beam Pro 右侧默认两键：**Show/Hide HUD**、**Show/Hide Nav Widget**。Hel
 - 自动请求 Android `CAMERA` 权限
 - 等待 Eye 插入（PLUGIN 状态）后重试启动采集
 - 使用 YUV → RGB Shader 渲染到世界空间 Quad
-- 调试状态写入 Beam Pro 日志（来源名：`RGB 相机`；仅 Engineer Mode 显示日志窗）
+- 调试状态写入 Beam Pro 日志（来源名：`RGB 相机`；仅 Engineer Mode 的**调试**页显示）
 
 ### 离线 OK 手势切片
 
@@ -133,7 +139,7 @@ RgbSliceGestureController.AnySliceStepRequested += step =>
 
 - 可选 **参考立方体**（RGB 坐标轴、六面图案、自动旋转；场景默认关闭）
 - 可选 **Check Plane**（从 StreamingAssets 加载 `check_plane.STL`；**场景默认关闭**）
-- Engineer Mode 下可通过 Beam Pro **Move X/Y/Z ±** 平移；有 Check Plane 时还可调透明度与 RGB 颜色通道
+- Engineer Mode 下可通过 Beam Pro **调试**页的 **Move X/Y/Z ±** 平移；有 Check Plane 时还可调透明度与 RGB 颜色通道
 
 ### 手术机器人模型（gRPC）
 
@@ -146,7 +152,7 @@ RgbSliceGestureController.AnySliceStepRequested += step =>
 | `DentalNavigationState` | 上下文/帧/阈值/切片/布局/观察控制及版本过滤 |
 | `DentalNavigationBand` | 阈值、滞回、告警文案 |
 | `DentalHudController` | 眼镜头锁定 HUD |
-| `DentalRobotBeamProDisplay` | 助手台：IP/端口搜索 + 导航镜像 |
+| `DentalRobotBeamProDisplay` | 分页界面的连接操作与导航状态数据源 |
 | `DentalRobotModelRenderer` | 解析 STL，头锁定小脑图，按 `drill_from_teeth` 放置 drill |
 | `DentalCtVolumeService` | DICOM 分块续传、SHA 校验、解析、体数据和按需切片缓存 |
 | `DentalCtSliceCoordinator` | 规划轴切片、解剖方向、双端控制应用 |
@@ -176,99 +182,31 @@ dataset_id: default
 
 ## Beam Pro 屏幕布局与控件
 
-以下 overlay **仅在 Android 真机（Beam Pro）运行时显示**，由 `OnGUI` 绘制。区域划分由 `BeamProOverlayLayout` 统一计算。
+`BeamProPagedController` 是 Beam Pro 唯一绘制入口。旧导航仪表、左眼预览、日志和 HelloMR 按钮组件继续提供状态与操作，但分页界面激活时不再各自绘制，避免坐标重叠。导航、XR 捕获、手势和媒体服务不依赖当前页签，切页不会停止后台流程。
 
-### 整体分区
+| 页面 | 内容 |
+|---|---|
+| **监看**（默认） | 固定连接状态、16:9 XR 左眼预览、剩余深度/位置偏移/角度偏差/综合状态四卡、HUD 与三维模型显隐、病例/CT/阈值/资产状态 |
+| **连接** | 当前连接状态、独立 IP 与端口输入、连接/重新连接按钮、操作结果；输入草稿在提交前不会应用 |
+| **调试** | 显示、相机、手势、导航对象与检查平面控件，以及统一日志；仅 Engineer Mode 可见，并按 Inspector 开关收起未配置的控件 |
 
-Beam Pro 实体屏为 **1080×2400（20:9 竖屏）**。产品模式左侧是导航仪表，右侧两枚产品按钮；勾选 HelloMR **Engineer Mode** 后主区改回日志并追加调试按钮。
+布局以 **540 逻辑单位短边**统一缩放：外边距 20、模块间距 12、触控高度不小于 56。顶部状态栏和底部页签固定，正文独立滚动；支持安全区域、软键盘避让、长文本测量和滚动条预留。竖屏以预览优先，横屏将预览与指标卡并排。
 
-```
-                    Beam Pro  ·  1080 × 2400  ·  20:9 竖屏
-┌────────────────────────────────────────┬────────────────┐
-│ 16px                                   │ 16px           │
-│  ┌──────────────────────────────────┐  │ ┌────────────┐ │
-│  │ 手术导航                         │  │ │ Show/Hide  │ │
-│  │ [IP] [........] [端口] [..] [搜索]│  │ │ HUD        │ │
-│  │                                  │  │ ├────────────┤ │
-│  │ 已连接  dataset  12ms            │  │ │ Show/Hide  │ │
-│  │                                  │  │ │ Nav Widget │ │
-│  │  剩余深度     侧偏               │  │ └────────────┘ │
-│  │  2.3 mm       0.4 mm             │  │                │
-│  │                                  │  │  Engineer Mode │
-│  │  轴向偏差     综合               │  │  时追加调试按钮 │
-│  │  1.2°         在容差             │  │  与日志窗口    │
-│  │          ≈ 76% 屏高              │  │  ≈24% 屏宽     │
-│  └──────────────────────────────────┘  │                │
-│                 12px                   │                │
-│  ┌──────────────────────────────────┐  │                │
-│  │ Left Eye (One Pro view)          │  │                │
-│  │      [XR 左眼预览画面]           │  │                │
-│  │         ≈ 24% 屏高               │  │                │
-│  └──────────────────────────────────┘  │                │
-│ 16px                                   │           16px │
-└────────────────────────────────────────┴────────────────┘
-```
+预览只显示 `LeftEyeDisplayWindow.TryGetLiveXrFrame` 返回的真实 XR 左眼帧；帧失效后立即显示不可用状态，不继续展示旧画面或主相机替代画面。
 
-说明：
+编辑器 Play Mode 可通过 **Tools → Beam Pro Preview** 打开任一页面或一次生成三页 1080×2400 截图。当前截图：
 
-- 右侧按钮列从顶部向下堆叠，行高随行数自适应；底部预览**仅占左侧栏**
-- 日志区标题下方为手术机器人 **IP / 端口 / 开始搜索** 控件（`GetDentalEndpointControlsRect`）
+- [监看页](Docs/BeamProScreenshots/monitor-editor.png)
+- [连接页](Docs/BeamProScreenshots/connection-editor.png)
+- [调试页](Docs/BeamProScreenshots/debug-editor.png)
 
-布局常量（`BeamProOverlayLayout`）：
-
-| 常量 | 值 | 含义 |
-|------|----|------|
-| `Margin` | 16px | 屏幕外边距 |
-| `ColumnGap` | 12px | 左侧内容与右侧按钮列间距 |
-| `RightColumnWidth` | 最大 280px | 右侧按钮列宽度（约屏宽 24%，夹在 120～280） |
-| `BottomPreviewMaxFraction` | 0.24 | 底部左眼预览最大高度占比 |
-| `RightColumnMaxHeightFraction` | 0.9 | 右侧按钮列可用高度上限 |
-| `MaxButtonRows` | 11 | 布局预留的最大按钮行数 |
-| `DentalEndpointControlsHeight` | 42px | 日志区顶部端点输入条高度 |
-
-可在 HelloMR / 各组件 Inspector 中通过 `m_Show*OnBeamPro`、`Show Dental Robot Beam Pro Panel` 等字段开关对应面板。
-
-### 1. 右侧操作按钮列（`HelloMR`）
-
-产品模式固定两行：
-
-| 行 | 控件 | 用途 |
-|---|---|---|
-| 1 | **Show HUD** / **Hide HUD** | 眼镜导航 HUD 显隐 |
-| 2 | **Show Nav Widget** / **Hide Nav Widget** | 小脑图与 C 外框显隐 |
-
-HelloMR Inspector 勾选 **Engineer Mode** 后追加：Controller/Hand、Glasses UI、RGB Window、Gesture、Move X/Y/Z、Check Plane 外观。
-
-### 2. 统一日志窗口（`BeamProUnifiedLogWindow`）
-
-产品模式隐藏。Engineer Mode 下占用主区，来源包括 `RGB 相机`、`手势识别`、`手术机器人`。手术机器人 metadata 每秒最多刷新一次状态摘要，不再逐帧写行。
-
-### 3. 手术机器人端点控件（`DentalRobotBeamProDisplay`）
-
-叠在统一日志区标题下方：
-
-| 控件 | 说明 |
-|------|------|
-| **IP** | IPv4 地址输入框 |
-| **端口** | 1–65535 |
-| **开始搜索** | 校验输入后调用 `DentalRobotGrpcClient.SearchEndpoint`，断开当前流并立即重连 |
-
-默认值来自 `DentalRobotConnectionDefaults`；HelloMR 也可在 Inspector 覆盖 Host / Port / DeviceId / DatasetId。
-
-### 4. 左眼预览（`LeftEyeDisplayWindow`）
-
-| 项目 | 说明 |
-|------|------|
-| **用途** | 在 Beam Pro 上镜像**眼镜 One Pro 左眼** XR 渲染。 |
-| **位置** | `GetBottomPreviewRect`：左侧内容区底部，高度约屏高 **12%～24%**（默认上限 24%）。 |
-| **交互** | 只读；右下角可显示分辨率等 `DebugInfo`；无帧时显示等待/错误文案。 |
-| **Inspector** | `Show On Beam Pro`、`Max Screen Height Fraction`。 |
+编辑器预览复用正式 IMGUI 绘制代码。真机触摸、软键盘、XREAL 双屏和真实 XR 帧仍需在 Beam Pro 上复核。
 
 ### 与眼镜端 UI 的区别
 
 | 位置 | 内容 |
 |------|------|
-| **Beam Pro 手机屏** | 导航仪表（或 Engineer 日志）、手术机器人端点、左眼预览、右侧 HUD/小脑图按钮 |
+| **Beam Pro 手机屏** | 分页监看、连接与工程调试界面 |
 | **XREAL 眼镜 HUD** | 头锁定导航 Canvas（A–F）；HelloMR DoF Canvas 默认隐藏 |
 | **MR 世界空间** | 头锁定 teeth/drill 小脑图；RGB Quad 与 Check Plane 默认不生成/隐藏 |
 
@@ -299,9 +237,11 @@ Assets/
 │   └── nr_plugins.json
 └── Samples/XREAL XR Plugin/3.1.0/Interaction Basics/HelloMR/
     ├── HelloMR.unity                    # 主场景
-    ├── HelloMR.cs                       # 追踪/输入/UI 总控 + 右侧按钮列
-    ├── BeamProOverlayLayout.cs          # Beam Pro 分区布局
-    ├── BeamProUnifiedLogWindow.cs       # 统一日志窗口
+    ├── HelloMR.cs                       # 追踪/输入/UI 总控 + 分页操作接口
+    ├── BeamProPagedController.cs        # Beam Pro 监看/连接/调试唯一绘制入口
+    ├── BeamProPageLayout.cs             # 纯函数分页布局、安全区与键盘避让
+    ├── BeamProOverlayLayout.cs          # 旧版 overlay 布局（分页激活时不绘制）
+    ├── BeamProUnifiedLogWindow.cs       # 统一日志数据源
     ├── RgbCameraFrameService.cs         # RGB 相机唯一所有者与多消费者分发
     ├── RGBCameraFloatingWindow.cs       # RGB 世界空间预览
     ├── RgbHandGesture.cs                # 手势枚举与 Observation
@@ -310,7 +250,7 @@ Assets/
     ├── RgbHandGestureRecognizer.cs      # Eye RGB 关键点识别 + 事件/日志
     ├── RgbSliceGestureStateMachine.cs   # 300ms OK、死区、限速和失效处理
     ├── XrRgbRtpStreamer.cs              # XR 左眼 + 可选 RGB 合成 RTP
-    ├── LeftEyeDisplayWindow.cs          # Beam Pro 底部左眼预览
+    ├── LeftEyeDisplayWindow.cs          # XR 左眼帧采集与分页预览数据源
     ├── ReferenceCubeSpawner.cs          # 参考立方体 / Check Plane
     ├── DentalRobotConnectionDefaults.cs # 默认 gRPC 连接参数
     ├── DentalRobotGrpcClient.cs         # 手术机器人 gRPC 客户端
@@ -319,7 +259,7 @@ Assets/
     ├── DentalDisplayLayoutController.cs # 双窗口位置、显隐和设备持久化
     ├── DentalHudController.cs           # 眼镜头锁定 HUD
     ├── DentalRobotModelRenderer.cs      # teeth/drill 小脑图
-    ├── DentalRobotBeamProDisplay.cs     # 助手台仪表 + IP/端口搜索
+    ├── DentalRobotBeamProDisplay.cs     # 导航状态数据源 + IP/端口连接
     ├── DentalStlMeshUtility.cs          # 共享 STL 网格解析
     ├── Dicom/                           # DICOM 传输、解码、体数据和切片
     └── GrpcGenerated/                   # dental_model_transfer 生成代码
@@ -342,7 +282,7 @@ Assets/
 确认 Eye RGB 已出画面，并检查 `[手势识别]` 是否显示 `MediaPipe Hand Landmarker 1.0.0` 为 running。手完整进入相机视野并稳定做 OK；编辑器没有 Android MediaPipe runtime，会明确显示不可用。真机仍需在实际手套、口腔灯、器械和遮挡环境下验证。
 
 **手术机器人 gRPC 连不上**  
-确认手机与机器人服务端在同一局域网；在 Beam Pro 顶部核对 IP/端口后点 **开始搜索**。产品模式看仪表「未连接」；Engineer Mode 看日志 **`[手术机器人]`**。默认地址见 `DentalRobotConnectionDefaults.cs`。
+确认手机与机器人服务端在同一局域网；在 Beam Pro **连接**页核对 IP/端口后点 **连接**。产品模式看顶部状态；Engineer Mode 可在**调试**页查看 **`[手术机器人]`** 日志。默认地址见 `DentalRobotConnectionDefaults.cs`。
 
 **眼镜 HUD 数字大了或小了约 1000 倍**  
 v2 协议只接受 mm 和 °，请修正导航端发送单位；客户端不会用 Inspector 比例猜测单位。v1 兼容数据仍沿用旧服务约定，但不会补造方向和阈值能力。
