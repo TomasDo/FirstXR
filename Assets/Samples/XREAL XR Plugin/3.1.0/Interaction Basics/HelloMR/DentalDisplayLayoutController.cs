@@ -3,9 +3,17 @@ using UnityEngine;
 
 namespace Unity.XR.XREAL.Samples
 {
+    public enum DentalContentAnchorMode
+    {
+        FollowHead = 0,
+        WorldLocked = 1,
+    }
+
     /// <summary>
-    /// Authoritative, persistent head-locked positions for the CT/HUD group and
-    /// the independent 3D model. Navigation-side control versions always win.
+    /// Authoritative positions and visibility for the CT/HUD group and the independent 3D model.
+    /// Navigation-side control versions always win for transmitted layout fields. The local anchor
+    /// mode is intentionally outside the protocol: Beam Pro can freeze both windows in world space
+    /// or return them to their configured head-relative positions without changing navigation data.
     /// </summary>
     public sealed class DentalDisplayLayoutController : MonoBehaviour
     {
@@ -22,6 +30,8 @@ namespace Unity.XR.XREAL.Samples
         Vector3 m_ModelPosition = DefaultModelPosition;
         bool m_HudVisible = true;
         bool m_ModelVisible;
+        // Always start in follow mode so an old spatial pose cannot reopen outside the doctor's view.
+        DentalContentAnchorMode m_ContentAnchorMode = DentalContentAnchorMode.FollowHead;
 
         public static DentalDisplayLayoutController Instance => s_Instance;
         public ulong ControlVersion => m_ControlVersion;
@@ -29,6 +39,7 @@ namespace Unity.XR.XREAL.Samples
         public Vector3 ModelLocalPositionMeters => m_ModelPosition;
         public bool HudVisible => m_HudVisible;
         public bool ModelVisible => m_ModelVisible;
+        public DentalContentAnchorMode ContentAnchorMode => m_ContentAnchorMode;
 
         public event Action Changed;
 
@@ -170,6 +181,18 @@ namespace Unity.XR.XREAL.Samples
                 return;
             m_ModelVisible = visible;
             Save();
+            Changed?.Invoke();
+        }
+
+        public void SetContentAnchorModeLocally(DentalContentAnchorMode mode)
+        {
+            if (mode != DentalContentAnchorMode.FollowHead
+                && mode != DentalContentAnchorMode.WorldLocked)
+                return;
+            if (m_ContentAnchorMode == mode)
+                return;
+
+            m_ContentAnchorMode = mode;
             Changed?.Invoke();
         }
 

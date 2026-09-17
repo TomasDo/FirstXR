@@ -66,7 +66,6 @@ namespace Unity.XR.XREAL.Samples
         Mesh m_DrillMesh;
         bool m_HasMetadata;
         Matrix4x4 m_DrillMatrix = Matrix4x4.identity;
-        Camera m_Camera;
 
         public static DentalRobotModelRenderer Instance => s_Instance;
 
@@ -132,6 +131,9 @@ namespace Unity.XR.XREAL.Samples
 
             if (m_AxisLine != null && m_AxisLine.material != null)
                 Destroy(m_AxisLine.material);
+
+            if (m_Root != null)
+                Destroy(m_Root.gameObject);
         }
 
         IEnumerator CreateRootWhenCameraReady()
@@ -392,22 +394,39 @@ namespace Unity.XR.XREAL.Samples
             if (camera == null)
                 return;
 
+            var created = false;
             if (m_Root == null)
             {
                 var root = new GameObject("Dental Nav Widget");
                 m_Root = root.transform;
                 m_Root.gameObject.SetActive(m_WidgetVisible);
-            }
-
-            if (m_Camera != camera || m_Root.parent != camera.transform)
-            {
-                m_Camera = camera;
-                m_Root.SetParent(camera.transform, false);
+                created = true;
             }
 
             var layout = DentalDisplayLayoutController.Instance;
-            m_Root.localPosition = layout != null ? layout.ModelLocalPositionMeters : m_HeadLockedLocalPosition;
+            var followsHead = layout == null
+                || layout.ContentAnchorMode == DentalContentAnchorMode.FollowHead;
+            // A root first created while world lock is selected still needs a sensible pose before
+            // it is detached from the camera.
+            if (created)
+                ApplyHeadRelativePose(camera, layout);
+
+            if (followsHead)
+                ApplyHeadRelativePose(camera, layout);
+            else if (m_Root.parent != null)
+                m_Root.SetParent(null, true);
+        }
+
+        void ApplyHeadRelativePose(Camera camera, DentalDisplayLayoutController layout)
+        {
+            if (m_Root.parent != camera.transform)
+                m_Root.SetParent(camera.transform, false);
+            m_Root.localPosition = layout != null
+                ? layout.ModelLocalPositionMeters
+                : m_HeadLockedLocalPosition;
             m_Root.localRotation = Quaternion.identity;
+            // Hover uses worldPositionStays, which can bake a non-1 camera scale into localScale.
+            m_Root.localScale = Vector3.one * m_ModelScale;
         }
 
         void ApplyLayoutAndValidity()
@@ -418,7 +437,8 @@ namespace Unity.XR.XREAL.Samples
                 m_WidgetVisible = layout.ModelVisible;
                 if (m_Root != null)
                 {
-                    m_Root.localPosition = layout.ModelLocalPositionMeters;
+                    if (layout.ContentAnchorMode == DentalContentAnchorMode.FollowHead)
+                        m_Root.localPosition = layout.ModelLocalPositionMeters;
                     if (m_Root.gameObject.activeSelf != m_WidgetVisible)
                         m_Root.gameObject.SetActive(m_WidgetVisible);
                 }

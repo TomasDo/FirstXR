@@ -8,8 +8,9 @@ using Unity.XR.XREAL;
 namespace Unity.XR.XREAL.Samples
 {
     /// <summary>
-    /// Head-locked intra-operative view. The CT plane and target remain in a fixed
-    /// buccal/lingual/mesial/distal orientation while the user's head moves.
+    /// Intra-operative view that can either follow the head or remain fixed at its current world
+    /// pose. The CT plane and target retain their buccal/lingual/mesial/distal orientation in both
+    /// modes.
     /// </summary>
     public sealed class DentalHudController : MonoBehaviour
     {
@@ -150,8 +151,7 @@ namespace Unity.XR.XREAL.Samples
             if (m_Views == null)
                 return;
 
-            AttachToCameraIfNeeded();
-            ApplyLayout();
+            ApplyAnchorAndLayout();
 
             var state = DentalNavigationState.Instance;
             if (state == null)
@@ -177,33 +177,47 @@ namespace Unity.XR.XREAL.Samples
                 yield return null;
             }
 
-            AttachToCameraIfNeeded();
+            ApplyAnchorAndLayout();
         }
 
-        void AttachToCameraIfNeeded()
+        void ApplyAnchorAndLayout()
         {
             var camera = XREALUtility.MainCamera != null ? XREALUtility.MainCamera : Camera.main;
             if (camera == null || m_HudRoot == null)
                 return;
 
-            if (m_Camera != camera || m_HudRoot.parent != camera.transform)
+            var layout = DentalDisplayLayoutController.Instance;
+            var followsHead = layout == null
+                || layout.ContentAnchorMode == DentalContentAnchorMode.FollowHead;
+            m_Camera = camera;
+            if (m_Canvas != null && m_Canvas.worldCamera != camera)
+                m_Canvas.worldCamera = camera;
+
+            if (followsHead)
             {
-                m_Camera = camera;
-                m_HudRoot.SetParent(camera.transform, false);
+                if (m_HudRoot.parent != camera.transform)
+                    m_HudRoot.SetParent(camera.transform, false);
+                m_HudRoot.localPosition = layout != null
+                    ? layout.HudLocalPositionMeters
+                    : m_DefaultLocalPositionMeters;
                 m_HudRoot.localRotation = Quaternion.identity;
                 m_HudRoot.localScale = Vector3.one;
-                if (m_Canvas != null)
-                    m_Canvas.worldCamera = camera;
             }
-        }
+            else if (m_HudRoot.parent != null)
+            {
+                if (m_HudRoot.parent == transform)
+                {
+                    m_HudRoot.SetParent(camera.transform, false);
+                    m_HudRoot.localPosition = layout != null
+                        ? layout.HudLocalPositionMeters
+                        : m_DefaultLocalPositionMeters;
+                    m_HudRoot.localRotation = Quaternion.identity;
+                    m_HudRoot.localScale = Vector3.one;
+                }
+                // Preserve the rendered pose at the exact moment Beam Pro selects "悬停".
+                m_HudRoot.SetParent(null, true);
+            }
 
-        void ApplyLayout()
-        {
-            if (m_HudRoot == null)
-                return;
-
-            var layout = DentalDisplayLayoutController.Instance;
-            m_HudRoot.localPosition = layout != null ? layout.HudLocalPositionMeters : m_DefaultLocalPositionMeters;
             if (layout != null && m_HudVisible != layout.HudVisible)
                 SetHudVisible(layout.HudVisible);
         }
@@ -212,6 +226,9 @@ namespace Unity.XR.XREAL.Samples
         {
             if (s_Instance == this)
                 s_Instance = null;
+
+            if (m_HudRoot != null)
+                Destroy(m_HudRoot.gameObject);
 
             DestroySprite(m_CircleSprite);
             DestroySprite(m_RingSprite);

@@ -41,8 +41,32 @@ namespace DentalNavigation.Tests
             foreach (var metric in layout.Monitor.MetricCards)
                 Assert.That(metric.xMin, Is.GreaterThanOrEqualTo(layout.Monitor.Preview.xMax + BeamProPageLayoutCalculator.Gap - Tolerance));
             Assert.That(layout.Monitor.AssetStatus.yMin,
-                Is.GreaterThanOrEqualTo(Mathf.Max(layout.Monitor.Preview.yMax, layout.Monitor.HudToggle.yMax) +
+                Is.GreaterThanOrEqualTo(Mathf.Max(layout.Monitor.Preview.yMax, layout.Monitor.FollowButton.yMax) +
                                         BeamProPageLayoutCalculator.Gap - Tolerance));
+        }
+
+        [Test]
+        public void MonitorProvidesSeparateNonOverlappingHoverAndFollowButtons()
+        {
+            var portrait = Layout(1080f, 2400f);
+            var landscape = Layout(2400f, 1080f);
+
+            foreach (var layout in new[] { portrait, landscape })
+            {
+                Assert.That(layout.Monitor.HoverButton.height,
+                    Is.GreaterThanOrEqualTo(BeamProPageLayoutCalculator.MinimumTouchHeight));
+                Assert.That(layout.Monitor.FollowButton.height,
+                    Is.GreaterThanOrEqualTo(BeamProPageLayoutCalculator.MinimumTouchHeight));
+                Assert.That(layout.Monitor.HoverButton.y,
+                    Is.EqualTo(layout.Monitor.FollowButton.y).Within(Tolerance));
+                Assert.That(layout.Monitor.HoverButton.yMin,
+                    Is.GreaterThanOrEqualTo(layout.Monitor.HudToggle.yMax +
+                                            BeamProPageLayoutCalculator.Gap - Tolerance));
+                AssertNoPositiveOverlap(layout.Monitor.HoverButton, layout.Monitor.FollowButton);
+                Assert.That(layout.Monitor.AssetStatus.yMin,
+                    Is.GreaterThanOrEqualTo(layout.Monitor.FollowButton.yMax +
+                                            BeamProPageLayoutCalculator.Gap - Tolerance));
+            }
         }
 
         [Test]

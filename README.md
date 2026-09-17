@@ -67,7 +67,9 @@ npm start -- --port 50051 --dicom-dir /absolute/path/to/explicit-vr-dicom
 
 颜色阈值、边界规则与滞回参数全部由导航端按上下文版本下发。阈值缺失时显示“阈值未同步”，不会套用客户端临床默认值。协议距离固定为 mm、角度固定为 °；数值显示一位小数，判定使用原始精度。
 
-三维模型是独立头锁定观察窗口，种植时默认隐藏；导航端可独立移动、显隐并恢复默认位置。它是观察窗口，不表示配准到真牙上的叠加。
+三维模型是独立观察窗口，种植时默认隐藏；导航端可独立移动、显隐并恢复默认位置。它是观察窗口，不表示配准到真牙上的叠加。
+
+Beam Pro **监看**页提供“悬停 / 跟随”互斥按钮，统一控制 HUD 与三维模型的空间锚定。默认“跟随”，内容保持在设定的头部相对位置；点击“悬停”后，内容固定在点击瞬间的空间位置；再次点击“跟随”会恢复到配置的头部相对位置。该操作只改变本地显示锚定，不改变导航指标或通信协议。
 
 Beam Pro 默认打开**监看**页，可切换 HUD 和三维模型显隐；HelloMR 勾选 **Engineer Mode** 后底部增加**调试**页。
 
@@ -186,7 +188,7 @@ dataset_id: default
 
 | 页面 | 内容 |
 |---|---|
-| **监看**（默认） | 固定连接状态、16:9 XR 左眼预览、剩余深度/位置偏移/角度偏差/综合状态四卡、HUD 与三维模型显隐、病例/CT/阈值/资产状态 |
+| **监看**（默认） | 固定连接状态、16:9 XR 左眼预览、剩余深度/位置偏移/角度偏差/综合状态四卡、HUD 与三维模型显隐、眼镜内容悬停/跟随、病例/CT/阈值/资产状态 |
 | **连接** | 当前连接状态、独立 IP 与端口输入、连接/重新连接按钮、操作结果；输入草稿在提交前不会应用 |
 | **调试** | 显示、相机、手势、导航对象与检查平面控件，以及统一日志；仅 Engineer Mode 可见，并按 Inspector 开关收起未配置的控件 |
 
@@ -207,8 +209,8 @@ dataset_id: default
 | 位置 | 内容 |
 |------|------|
 | **Beam Pro 手机屏** | 分页监看、连接与工程调试界面 |
-| **XREAL 眼镜 HUD** | 头锁定导航 Canvas（A–F）；HelloMR DoF Canvas 默认隐藏 |
-| **MR 世界空间** | 头锁定 teeth/drill 小脑图；RGB Quad 与 Check Plane 默认不生成/隐藏 |
+| **XREAL 眼镜 HUD** | 默认跟随头部的导航 Canvas（A–F），可由 Beam Pro 切换为空间悬停；HelloMR DoF Canvas 默认隐藏 |
+| **MR 世界空间** | teeth/drill 小脑图与 HUD 共享悬停/跟随模式；RGB Quad 与 Check Plane 默认不生成/隐藏 |
 
 ## 构建与部署
 
@@ -256,8 +258,8 @@ Assets/
     ├── DentalRobotGrpcClient.cs         # 手术机器人 gRPC 客户端
     ├── DentalNavigationState.cs         # 导航总线
     ├── DentalNavigationBand.cs          # 阈值 / 滞回 / 告警
-    ├── DentalDisplayLayoutController.cs # 双窗口位置、显隐和设备持久化
-    ├── DentalHudController.cs           # 眼镜头锁定 HUD
+    ├── DentalDisplayLayoutController.cs # 双窗口位置、显隐及悬停/跟随状态
+    ├── DentalHudController.cs           # 可跟随或空间悬停的眼镜 HUD
     ├── DentalRobotModelRenderer.cs      # teeth/drill 小脑图
     ├── DentalRobotBeamProDisplay.cs     # 导航状态数据源 + IP/端口连接
     ├── DentalStlMeshUtility.cs          # 共享 STL 网格解析

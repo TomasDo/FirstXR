@@ -77,11 +77,13 @@ namespace Unity.XR.XREAL.Samples
         public Rect[] MetricCards { get; internal set; }
         public Rect HudToggle { get; internal set; }
         public Rect ModelToggle { get; internal set; }
+        public Rect HoverButton { get; internal set; }
+        public Rect FollowButton { get; internal set; }
         public Rect AssetStatus { get; internal set; }
 
         public Rect[] TouchTargets
         {
-            get { return new[] { HudToggle, ModelToggle }; }
+            get { return new[] { HudToggle, ModelToggle, HoverButton, FollowButton }; }
         }
     }
 
@@ -353,6 +355,10 @@ namespace Unity.XR.XREAL.Samples
             var modelToggle = new Rect(controlWidth + Gap, y, controlWidth, MinimumTouchHeight);
             y = hudToggle.yMax + Gap;
 
+            var hoverButton = new Rect(0f, y, controlWidth, MinimumTouchHeight);
+            var followButton = new Rect(controlWidth + Gap, y, controlWidth, MinimumTouchHeight);
+            y = hoverButton.yMax + Gap;
+
             var assetStatus = new Rect(0f, y, width, Mathf.Max(116f, requestedStatusHeight));
             y = assetStatus.yMax + OuterMargin;
             return new BeamProMonitorPageLayout
@@ -362,6 +368,8 @@ namespace Unity.XR.XREAL.Samples
                 MetricCards = metrics,
                 HudToggle = hudToggle,
                 ModelToggle = modelToggle,
+                HoverButton = hoverButton,
+                FollowButton = followButton,
                 AssetStatus = assetStatus,
             };
         }
@@ -391,7 +399,10 @@ namespace Unity.XR.XREAL.Samples
             var controlWidth = (rightWidth - Gap) * 0.5f;
             var hudToggle = new Rect(rightX, controlsY, controlWidth, MinimumTouchHeight);
             var modelToggle = new Rect(rightX + controlWidth + Gap, controlsY, controlWidth, MinimumTouchHeight);
-            var firstRowBottom = Mathf.Max(preview.yMax, hudToggle.yMax);
+            var anchorY = hudToggle.yMax + Gap;
+            var hoverButton = new Rect(rightX, anchorY, controlWidth, MinimumTouchHeight);
+            var followButton = new Rect(rightX + controlWidth + Gap, anchorY, controlWidth, MinimumTouchHeight);
+            var firstRowBottom = Mathf.Max(preview.yMax, followButton.yMax);
             var assetStatus = new Rect(0f, firstRowBottom + Gap, width, Mathf.Max(104f, requestedStatusHeight));
             var contentHeight = assetStatus.yMax + OuterMargin;
 
@@ -402,6 +413,8 @@ namespace Unity.XR.XREAL.Samples
                 MetricCards = metrics,
                 HudToggle = hudToggle,
                 ModelToggle = modelToggle,
+                HoverButton = hoverButton,
+                FollowButton = followButton,
                 AssetStatus = assetStatus,
             };
         }

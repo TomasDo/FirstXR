@@ -441,6 +441,18 @@ namespace Unity.XR.XREAL.Samples
                 m_Owner.SetModelVisibleFromBeamPro(!modelVisible);
             }
 
+            var followsHead = m_Owner == null || m_Owner.ContentFollowsHead;
+            DrawAnchorModeButton(
+                page.HoverButton,
+                followsHead ? "内容悬停" : "内容悬停（当前）",
+                !followsHead,
+                DentalContentAnchorMode.WorldLocked);
+            DrawAnchorModeButton(
+                page.FollowButton,
+                followsHead ? "内容跟随（当前）" : "内容跟随",
+                followsHead,
+                DentalContentAnchorMode.FollowHead);
+
             DrawPanel(page.AssetStatus);
             GUI.contentColor = TextPrimary;
             GUI.Label(new Rect(page.AssetStatus.x + 16f, page.AssetStatus.y + 10f,
@@ -720,6 +732,22 @@ namespace Unity.XR.XREAL.Samples
                 leftAction?.Invoke();
             if (GUI.Button(right, rightLabel, m_ButtonStyle))
                 rightAction?.Invoke();
+        }
+
+        void DrawAnchorModeButton(
+            Rect rect,
+            string label,
+            bool selected,
+            DentalContentAnchorMode mode)
+        {
+            var previousEnabled = GUI.enabled;
+            var previousBackground = GUI.backgroundColor;
+            GUI.enabled = m_Owner != null;
+            GUI.backgroundColor = selected ? Blue : Color.white;
+            if (GUI.Button(rect, label, m_ButtonStyle) && m_Owner != null && !selected)
+                m_Owner.SetContentAnchorModeFromBeamPro(mode);
+            GUI.backgroundColor = previousBackground;
+            GUI.enabled = previousEnabled;
         }
 
         void DrawTabs(BeamProPageLayoutResult layout)

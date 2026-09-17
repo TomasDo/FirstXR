@@ -121,6 +121,16 @@ namespace Unity.XR.XREAL.Samples
             }
         }
 
+        public bool ContentFollowsHead
+        {
+            get
+            {
+                var layout = DentalDisplayLayoutController.EnsureInstance();
+                return layout == null
+                    || layout.ContentAnchorMode == DentalContentAnchorMode.FollowHead;
+            }
+        }
+
         public bool HasLocalRgbPreview
         {
             get
@@ -355,6 +365,20 @@ namespace Unity.XR.XREAL.Samples
                 DentalRobotModelRenderer.Instance.SetWidgetVisible(visible);
             if (DentalHudController.Instance != null)
                 DentalHudController.Instance.SetWidgetFrameVisible(visible);
+        }
+
+        public void SetContentAnchorModeFromBeamPro(DentalContentAnchorMode mode)
+        {
+            var layout = DentalDisplayLayoutController.EnsureInstance();
+            if (layout == null || layout.ContentAnchorMode == mode)
+                return;
+
+            layout.SetContentAnchorModeLocally(mode);
+            var status = mode == DentalContentAnchorMode.WorldLocked
+                ? "悬停：眼镜内容已固定在当前位置"
+                : "跟随：眼镜内容已恢复头部跟随";
+            BeamProUnifiedLogWindow.SetStatus("眼镜内容", status);
+            BeamProUnifiedLogWindow.AddLine("眼镜内容", status);
         }
 
         public void ToggleBeamProInputSource()
