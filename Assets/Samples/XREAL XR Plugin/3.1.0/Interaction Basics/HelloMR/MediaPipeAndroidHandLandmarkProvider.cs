@@ -11,8 +11,8 @@ namespace Unity.XR.XREAL.Samples
     /// </summary>
     public sealed class MediaPipeAndroidHandLandmarkProvider : IRgbHandLandmarkProvider
     {
-        const int InputWidth = 256;
-        const int InputHeight = 144;
+        const int InputWidth = 480;
+        const int InputHeight = 270;
         const int ResultHeaderLength = 4;
         const string BridgeClass = "com.firstxr.mediapipe.HandLandmarkerBridge";
         const string ModelAssetPath = "mediapipe/hand_landmarker.task";

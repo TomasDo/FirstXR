@@ -5,7 +5,9 @@ namespace Unity.XR.XREAL.Samples
 {
     /// <summary>
     /// Converts frames from the shared RGB owner into landmark observations through a
-    /// pluggable offline provider, then classifies the OK pose on the main thread.
+    /// pluggable offline provider, then classifies simple poses on the main thread.
+    /// <see cref="ObservationUpdated"/> carries the immediate unlatched pose so OK slice
+    /// timing is unchanged. <see cref="CurrentGesture"/> waits for continuous confirmation.
     /// </summary>
     public class RgbHandGestureRecognizer : MonoBehaviour
     {
@@ -21,6 +23,7 @@ namespace Unity.XR.XREAL.Samples
 
         readonly object m_PendingLock = new object();
         readonly RgbHandGestureAnalyzer m_Analyzer = new RgbHandGestureAnalyzer();
+        readonly RgbHandGestureStabilizer m_Stabilizer = new RgbHandGestureStabilizer();
         RgbCameraFrameService m_CameraService;
         IRgbHandLandmarkProvider m_Provider;
         RgbHandLandmarkFrame m_PendingLandmarks;
@@ -65,6 +68,7 @@ namespace Unity.XR.XREAL.Samples
         void OnDisable()
         {
             StopProviderAndCamera();
+            m_Stabilizer.Reset();
             SetCurrentGesture(RgbHandGesture.None);
         }
 
@@ -82,7 +86,10 @@ namespace Unity.XR.XREAL.Samples
 
             var now = Time.realtimeSinceStartupAsDouble;
             if (CurrentGesture != RgbHandGesture.None && now - m_LastObservationTime > GestureStaleSeconds)
+            {
+                m_Stabilizer.Reset();
                 SetCurrentGesture(RgbHandGesture.None);
+            }
 
             if (now >= m_NextStatusTime)
             {
@@ -107,6 +114,7 @@ namespace Unity.XR.XREAL.Samples
             else
             {
                 StopProviderAndCamera();
+                m_Stabilizer.Reset();
                 SetCurrentGesture(RgbHandGesture.None);
                 LogStatus("手势识别已关闭。");
             }
@@ -226,17 +234,20 @@ namespace Unity.XR.XREAL.Samples
                 m_HasPendingLandmarks = false;
             }
 
-            var observation = m_Analyzer.Analyze(frame);
+            var now = Time.realtimeSinceStartupAsDouble;
+            var publishedChanged = m_Stabilizer.Observe(m_Analyzer, frame, now, out var observation);
             LastObservation = observation;
-            m_LastObservationTime = Time.realtimeSinceStartupAsDouble;
-            SetCurrentGesture(observation.Gesture);
+            m_LastObservationTime = now;
+            if (publishedChanged)
+                SetCurrentGesture(m_Stabilizer.Published);
             ObservationUpdated?.Invoke(observation);
 
             if (m_LogDebugFeatures)
             {
                 BeamProUnifiedLogWindow.SetStatus(
                     LogSource,
-                    $"provider={ProviderName} gesture={RgbHandGestureNames.ToChinese(observation.Gesture)} " +
+                    $"provider={ProviderName} stable={RgbHandGestureNames.ToChinese(CurrentGesture)} " +
+                    $"raw={RgbHandGestureNames.ToChinese(observation.Gesture)} " +
                     $"palm=({observation.PalmPosition.x:0.00},{observation.PalmPosition.y:0.00}) conf={observation.Confidence:0.00}");
             }
         }

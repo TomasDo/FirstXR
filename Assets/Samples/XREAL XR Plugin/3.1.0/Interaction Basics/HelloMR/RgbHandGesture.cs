@@ -10,6 +10,7 @@ namespace Unity.XR.XREAL.Samples
         Fist = 2,
         Pinch = 3,
         Ok = 4,
+        TwoFinger = 5,
     }
 
     public static class RgbHandGestureNames
@@ -26,10 +27,23 @@ namespace Unity.XR.XREAL.Samples
                     return "捏合";
                 case RgbHandGesture.Ok:
                     return "OK";
+                case RgbHandGesture.TwoFinger:
+                    return "食指中指张开";
                 default:
                     return "无";
             }
         }
+    }
+
+    /// <summary>
+    /// Hysteresis memory for the next frame. The analyzer itself stores nothing;
+    /// callers pass the latch returned on the previous observation.
+    /// </summary>
+    public struct RgbHandGestureLatch
+    {
+        public bool PinchLatched;
+        public byte ExtendedBits;
+        public byte CurledBits;
     }
 
     public struct RgbHandGestureObservation
@@ -46,6 +60,7 @@ namespace Unity.XR.XREAL.Samples
         public float Confidence;
         public long SourceSequence;
         public double ObservedAtSeconds;
+        public RgbHandGestureLatch Latch;
 
         public static RgbHandGestureObservation None => new RgbHandGestureObservation
         {

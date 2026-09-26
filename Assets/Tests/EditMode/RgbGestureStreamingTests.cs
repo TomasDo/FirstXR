@@ -24,16 +24,124 @@ namespace DentalNavigation.Tests
         }
 
         [Test]
-        public void LandmarkAnalyzer_RejectsLowConfidenceOrOpenTips()
+        public void LandmarkAnalyzer_ClassifiesOpenPalmPinchAndTwoFinger()
         {
-            var points = CreateOpenHand();
             var analyzer = new RgbHandGestureAnalyzer();
 
-            Assert.That(analyzer.Analyze(new RgbHandLandmarkFrame(points, 0.9f, true, 1, 0)).Gesture,
-                Is.EqualTo(RgbHandGesture.None));
+            Assert.That(analyzer.Analyze(Frame(CreateOpenHand(), 0.9f)).Gesture, Is.EqualTo(RgbHandGesture.OpenPalm));
+            Assert.That(analyzer.Analyze(Frame(CreateSpreadOpenPalm(), 0.9f)).Gesture, Is.EqualTo(RgbHandGesture.OpenPalm));
+            Assert.That(analyzer.Analyze(Frame(CreatePinch(0.04f), 0.9f)).Gesture, Is.EqualTo(RgbHandGesture.Pinch));
+            Assert.That(analyzer.Analyze(Frame(CreateTwoFinger(), 0.9f)).Gesture, Is.EqualTo(RgbHandGesture.TwoFinger));
+        }
+
+        [Test]
+        public void LandmarkAnalyzer_UsesDepthSoImageOverlapIsNotPinch()
+        {
+            var points = CreateOpenHand();
             points[4] = points[8];
-            Assert.That(analyzer.Analyze(new RgbHandLandmarkFrame(points, 0.2f, true, 2, 0)).Gesture,
-                Is.EqualTo(RgbHandGesture.None));
+            points[4].z = 0.20f;
+            var analyzer = new RgbHandGestureAnalyzer();
+
+            Assert.That(analyzer.Analyze(Frame(points, 0.9f)).Gesture, Is.EqualTo(RgbHandGesture.OpenPalm));
+        }
+
+        [Test]
+        public void LandmarkAnalyzer_PinchAndExtensionUseHysteresis()
+        {
+            var analyzer = new RgbHandGestureAnalyzer();
+            var entered = analyzer.Analyze(Frame(CreatePinch(0.04f), 0.9f));
+            Assert.That(entered.Gesture, Is.EqualTo(RgbHandGesture.Pinch));
+            Assert.That(entered.Latch.PinchLatched, Is.True);
+
+            var held = analyzer.Analyze(Frame(CreatePinch(0.08f), 0.9f), entered.Latch);
+            Assert.That(held.Gesture, Is.EqualTo(RgbHandGesture.Pinch));
+            Assert.That(analyzer.Analyze(Frame(CreatePinch(0.08f), 0.9f)).Gesture, Is.EqualTo(RgbHandGesture.None));
+
+            var released = analyzer.Analyze(Frame(CreatePinch(0.10f), 0.9f), held.Latch);
+            Assert.That(released.Gesture, Is.EqualTo(RgbHandGesture.None));
+            Assert.That(released.Latch.PinchLatched, Is.False);
+
+            var open = analyzer.Analyze(Frame(CreateOpenHand(), 0.9f));
+            var uncertain = CreateOpenHand();
+            BendFinger(uncertain, 5, 6, 8, 130f);
+            BendFinger(uncertain, 9, 10, 12, 130f);
+            BendFinger(uncertain, 13, 14, 16, 130f);
+            BendFinger(uncertain, 17, 18, 20, 130f);
+            Assert.That(analyzer.Analyze(Frame(uncertain, 0.9f)).Gesture, Is.EqualTo(RgbHandGesture.None));
+            Assert.That(analyzer.Analyze(Frame(uncertain, 0.9f), open.Latch).Gesture, Is.EqualTo(RgbHandGesture.OpenPalm));
+        }
+
+        [Test]
+        public void LandmarkAnalyzer_RejectsLowConfidenceAndMissingHand()
+        {
+            var points = CreateOpenHand();
+            points[4] = points[8];
+            var analyzer = new RgbHandGestureAnalyzer();
+
+            Assert.That(analyzer.Analyze(Frame(points, 0.2f)).Gesture, Is.EqualTo(RgbHandGesture.None));
+            Assert.That(analyzer.Analyze(Frame(points, 0.2f)).HandDetected, Is.False);
+            Assert.That(analyzer.Analyze(RgbHandLandmarkFrame.NotTracked(9, 1.0)).Gesture, Is.EqualTo(RgbHandGesture.None));
+            Assert.That(analyzer.Analyze(RgbHandLandmarkFrame.NotTracked(9, 1.0)).HandDetected, Is.False);
+        }
+
+        [Test]
+        public void Stabilizer_ConfirmsAfter250Ms_AndClearsImmediatelyWhenConfidenceDrops()
+        {
+            Assert.That(RgbHandGestureStabilizer.ConfirmSeconds, Is.EqualTo(0.25d));
+            var analyzer = new RgbHandGestureAnalyzer();
+            var stabilizer = new RgbHandGestureStabilizer();
+            var open = Frame(CreateOpenHand(), 0.9f);
+
+            Assert.That(stabilizer.Observe(analyzer, open, 0d, out var raw), Is.False);
+            Assert.That(raw.Gesture, Is.EqualTo(RgbHandGesture.OpenPalm));
+            Assert.That(stabilizer.Published, Is.EqualTo(RgbHandGesture.None));
+            Assert.That(stabilizer.Observe(analyzer, open, 0.249d, out _), Is.False);
+            Assert.That(stabilizer.Observe(analyzer, open, 0.25d, out _), Is.True);
+            Assert.That(stabilizer.Published, Is.EqualTo(RgbHandGesture.OpenPalm));
+            Assert.That(stabilizer.Observe(analyzer, open, 0.30d, out _), Is.False);
+
+            var low = new RgbHandLandmarkFrame(CreateOpenHand(), 0.2f, true, 2, 0.31d);
+            Assert.That(stabilizer.Observe(analyzer, low, 0.31d, out var lowObservation), Is.True);
+            Assert.That(lowObservation.Gesture, Is.EqualTo(RgbHandGesture.None));
+            Assert.That(lowObservation.HandDetected, Is.False);
+            Assert.That(stabilizer.Published, Is.EqualTo(RgbHandGesture.None));
+        }
+
+        [Test]
+        public void Stabilizer_KeepsImmediateOkForSliceWhilePublishedGestureWaits()
+        {
+            var points = CreateOpenHand();
+            points[4] = new Vector3(0.47f, 0.30f, 0f);
+            points[8] = new Vector3(0.48f, 0.30f, 0f);
+            var stabilizer = new RgbHandGestureStabilizer();
+
+            var changed = stabilizer.Observe(new RgbHandGestureAnalyzer(), Frame(points, 0.9f), 0d, out var raw);
+
+            Assert.That(changed, Is.False);
+            Assert.That(raw.Gesture, Is.EqualTo(RgbHandGesture.Ok));
+            Assert.That(raw.HandDetected, Is.True);
+            Assert.That(stabilizer.Published, Is.EqualTo(RgbHandGesture.None));
+        }
+
+        [Test]
+        public void Stabilizer_HoldsPinchUntilTheExitThresholdThenWaitsToClear()
+        {
+            var analyzer = new RgbHandGestureAnalyzer();
+            var stabilizer = new RgbHandGestureStabilizer();
+            var pinch = Frame(CreatePinch(0.04f), 0.9f);
+            stabilizer.Observe(analyzer, pinch, 0d, out _);
+            Assert.That(stabilizer.Observe(analyzer, pinch, 0.25d, out _), Is.True);
+            Assert.That(stabilizer.Published, Is.EqualTo(RgbHandGesture.Pinch));
+
+            Assert.That(stabilizer.Observe(analyzer, Frame(CreatePinch(0.08f), 0.9f), 0.30d, out var raw), Is.False);
+            Assert.That(raw.Gesture, Is.EqualTo(RgbHandGesture.None));
+            Assert.That(stabilizer.Published, Is.EqualTo(RgbHandGesture.Pinch));
+
+            var released = Frame(CreatePinch(0.10f), 0.9f);
+            Assert.That(stabilizer.Observe(analyzer, released, 0.40d, out _), Is.False);
+            Assert.That(stabilizer.Published, Is.EqualTo(RgbHandGesture.Pinch));
+            Assert.That(stabilizer.Observe(analyzer, released, 0.65d, out _), Is.True);
+            Assert.That(stabilizer.Published, Is.EqualTo(RgbHandGesture.None));
         }
 
         [Test]
@@ -188,6 +296,53 @@ namespace DentalNavigation.Tests
             var observation = RgbHandGestureObservation.None;
             observation.HandDetected = true;
             return observation;
+        }
+
+        static RgbHandLandmarkFrame Frame(Vector3[] points, float confidence)
+        {
+            return new RgbHandLandmarkFrame(points, confidence, true, 1, 0d);
+        }
+
+        static Vector3[] CreatePinch(float tipSeparation)
+        {
+            var points = CreateOpenHand();
+            BendFinger(points, 5, 6, 8, 40f);
+            BendFinger(points, 9, 10, 12, 0f);
+            BendFinger(points, 13, 14, 16, 0f);
+            BendFinger(points, 17, 18, 20, 0f);
+            points[4] = points[8] + new Vector3(tipSeparation, 0f, 0f);
+            return points;
+        }
+
+        static Vector3[] CreateTwoFinger()
+        {
+            var points = CreateOpenHand();
+            points[4] = new Vector3(0.30f, 0.70f, 0f);
+            points[5] = new Vector3(0.42f, 0.62f, 0f);
+            points[6] = new Vector3(0.32f, 0.50f, 0f);
+            points[8] = new Vector3(0.22f, 0.38f, 0f);
+            BendFinger(points, 13, 14, 16, 0f);
+            BendFinger(points, 17, 18, 20, 0f);
+            return points;
+        }
+
+        static Vector3[] CreateSpreadOpenPalm()
+        {
+            var points = CreateOpenHand();
+            points[4] = new Vector3(0.30f, 0.70f, 0f);
+            points[5] = new Vector3(0.42f, 0.62f, 0f);
+            points[6] = new Vector3(0.32f, 0.50f, 0f);
+            points[8] = new Vector3(0.22f, 0.38f, 0f);
+            return points;
+        }
+
+        static void BendFinger(Vector3[] points, int mcp, int pip, int tip, float interiorDegrees)
+        {
+            var pipPoint = points[mcp] + new Vector3(0f, -0.12f, 0f);
+            var offsetFromStraight = (180f - interiorDegrees) * Mathf.Deg2Rad;
+            var direction = new Vector3(Mathf.Sin(offsetFromStraight), -Mathf.Cos(offsetFromStraight), 0f);
+            points[pip] = pipPoint;
+            points[tip] = pipPoint + direction * 0.12f;
         }
 
         static Vector3[] CreateOpenHand()
