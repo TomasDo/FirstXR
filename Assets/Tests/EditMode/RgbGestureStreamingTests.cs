@@ -45,6 +45,64 @@ namespace DentalNavigation.Tests
             Assert.That(analyzer.Analyze(Frame(points, 0.9f)).Gesture, Is.EqualTo(RgbHandGesture.OpenPalm));
         }
 
+        [TestCase(16f / 9f, 0f)]
+        [TestCase(16f / 9f, 90f)]
+        [TestCase(9f / 16f, 0f)]
+        [TestCase(9f / 16f, 90f)]
+        public void LandmarkAnalyzer_TwoFingerSpreadIsIndependentOfImageAspectAndRotation(float aspect, float rotation)
+        {
+            var points = CreateTwoFinger();
+            var angle = 25f * Mathf.Deg2Rad;
+            var indexDirection = new Vector3(-Mathf.Sin(angle), -Mathf.Cos(angle), 0f) * 0.15f;
+            var middleDirection = new Vector3(0f, -0.15f, 0f);
+            points[6] = points[5] + indexDirection * 0.5f;
+            points[8] = points[5] + indexDirection;
+            points[10] = points[9] + middleDirection * 0.5f;
+            points[12] = points[9] + middleDirection;
+
+            var observation = new RgbHandGestureAnalyzer().Analyze(ImageFrame(points, aspect, rotation));
+
+            Assert.That(observation.Gesture, Is.EqualTo(RgbHandGesture.TwoFinger));
+        }
+
+        [TestCase(16f / 9f, 0f)]
+        [TestCase(16f / 9f, 90f)]
+        [TestCase(9f / 16f, 0f)]
+        [TestCase(9f / 16f, 90f)]
+        public void LandmarkAnalyzer_JointAnglesAreIndependentOfImageAspectAndRotation(float aspect, float rotation)
+        {
+            var points = CreateOpenHand();
+            BendFinger(points, 5, 6, 8, 155f);
+            BendFinger(points, 9, 10, 12, 155f);
+            BendFinger(points, 13, 14, 16, 155f);
+            BendFinger(points, 17, 18, 20, 155f);
+
+            var observation = new RgbHandGestureAnalyzer().Analyze(ImageFrame(points, aspect, rotation));
+
+            Assert.That(observation.Gesture, Is.EqualTo(RgbHandGesture.OpenPalm));
+        }
+
+        [TestCase(16f / 9f, 0f)]
+        [TestCase(16f / 9f, 90f)]
+        [TestCase(9f / 16f, 0f)]
+        [TestCase(9f / 16f, 90f)]
+        public void LandmarkAnalyzer_PinchDistanceUsesWidthUnitsAndPalmKeepsImageCoordinates(float aspect, float rotation)
+        {
+            var points = CreatePinch(0.04f);
+            points[4].z = 0.02f;
+            var frame = ImageFrame(points, aspect, rotation);
+            var originalPoints = (Vector3[])frame.Landmarks.Clone();
+
+            var observation = new RgbHandGestureAnalyzer().Analyze(frame);
+
+            Assert.That(observation.Gesture, Is.EqualTo(RgbHandGesture.Pinch));
+            Assert.That(observation.PeakSeparation, Is.EqualTo(Mathf.Sqrt(0.04f * 0.04f + 0.02f * 0.02f) / 0.20f).Within(0.0001f));
+            var palm = (originalPoints[0] + originalPoints[5] + originalPoints[9] + originalPoints[13] + originalPoints[17]) / 5f;
+            Assert.That(observation.PalmPosition.x, Is.EqualTo(palm.x).Within(0.0001f));
+            Assert.That(observation.PalmPosition.y, Is.EqualTo(palm.y).Within(0.0001f));
+            CollectionAssert.AreEqual(originalPoints, frame.Landmarks);
+        }
+
         [Test]
         public void LandmarkAnalyzer_PinchAndExtensionUseHysteresis()
         {
@@ -95,6 +153,7 @@ namespace DentalNavigation.Tests
             Assert.That(stabilizer.Observe(analyzer, open, 0d, out var raw), Is.False);
             Assert.That(raw.Gesture, Is.EqualTo(RgbHandGesture.OpenPalm));
             Assert.That(stabilizer.Published, Is.EqualTo(RgbHandGesture.None));
+            Assert.That(stabilizer.Observe(analyzer, open, 0.125d, out _), Is.False);
             Assert.That(stabilizer.Observe(analyzer, open, 0.249d, out _), Is.False);
             Assert.That(stabilizer.Observe(analyzer, open, 0.25d, out _), Is.True);
             Assert.That(stabilizer.Published, Is.EqualTo(RgbHandGesture.OpenPalm));
@@ -130,6 +189,7 @@ namespace DentalNavigation.Tests
             var stabilizer = new RgbHandGestureStabilizer();
             var pinch = Frame(CreatePinch(0.04f), 0.9f);
             stabilizer.Observe(analyzer, pinch, 0d, out _);
+            Assert.That(stabilizer.Observe(analyzer, pinch, 0.125d, out _), Is.False);
             Assert.That(stabilizer.Observe(analyzer, pinch, 0.25d, out _), Is.True);
             Assert.That(stabilizer.Published, Is.EqualTo(RgbHandGesture.Pinch));
 
@@ -140,8 +200,77 @@ namespace DentalNavigation.Tests
             var released = Frame(CreatePinch(0.10f), 0.9f);
             Assert.That(stabilizer.Observe(analyzer, released, 0.40d, out _), Is.False);
             Assert.That(stabilizer.Published, Is.EqualTo(RgbHandGesture.Pinch));
+            Assert.That(stabilizer.Observe(analyzer, released, 0.525d, out _), Is.False);
             Assert.That(stabilizer.Observe(analyzer, released, 0.65d, out _), Is.True);
             Assert.That(stabilizer.Published, Is.EqualTo(RgbHandGesture.None));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Stabilizer_FrameGapRestartsPendingConfirmation(bool expireBetweenFrames)
+        {
+            var analyzer = new RgbHandGestureAnalyzer();
+            var stabilizer = new RgbHandGestureStabilizer();
+            var open = Frame(CreateOpenHand(), 0.9f);
+            stabilizer.Observe(analyzer, open, 0d, out _);
+
+            // Cover both regular Update calls during camera loss and a stalled main thread.
+            if (expireBetweenFrames)
+                Assert.That(stabilizer.Expire(0.181d), Is.False);
+            Assert.That(stabilizer.Observe(analyzer, open, 3d, out _), Is.False);
+            Assert.That(stabilizer.Published, Is.EqualTo(RgbHandGesture.None));
+            Assert.That(stabilizer.Observe(analyzer, open, 3.125d, out _), Is.False);
+            Assert.That(stabilizer.Observe(analyzer, open, 3.249d, out _), Is.False);
+            Assert.That(stabilizer.Observe(analyzer, open, 3.25d, out _), Is.True);
+            Assert.That(stabilizer.Published, Is.EqualTo(RgbHandGesture.OpenPalm));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Stabilizer_FrameGapClearsFingerAndPinchLatches(bool pinch)
+        {
+            var analyzer = new RgbHandGestureAnalyzer();
+            var stabilizer = new RgbHandGestureStabilizer();
+            var entered = pinch ? CreatePinch(0.04f) : CreateOpenHand();
+            var uncertain = pinch ? CreatePinch(0.08f) : CreateOpenHand();
+            if (!pinch)
+            {
+                BendFinger(uncertain, 5, 6, 8, 130f);
+                BendFinger(uncertain, 9, 10, 12, 130f);
+                BendFinger(uncertain, 13, 14, 16, 130f);
+                BendFinger(uncertain, 17, 18, 20, 130f);
+            }
+            stabilizer.Observe(analyzer, Frame(entered, 0.9f), 0d, out _);
+
+            foreach (var time in new[] { 3d, 3.125d, 3.25d })
+            {
+                Assert.That(stabilizer.Observe(analyzer, Frame(uncertain, 0.9f), time, out _), Is.False);
+                Assert.That(stabilizer.Published, Is.EqualTo(RgbHandGesture.None));
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Stabilizer_FrameGapClearsPublishedGestureAndRequiresFreshConfirmation(bool expireBetweenFrames)
+        {
+            var analyzer = new RgbHandGestureAnalyzer();
+            var stabilizer = new RgbHandGestureStabilizer();
+            var open = Frame(CreateOpenHand(), 0.9f);
+            stabilizer.Observe(analyzer, open, 0d, out _);
+            stabilizer.Observe(analyzer, open, 0.125d, out _);
+            Assert.That(stabilizer.Observe(analyzer, open, 0.25d, out _), Is.True);
+
+            if (expireBetweenFrames)
+            {
+                Assert.That(stabilizer.Expire(0.42d), Is.False);
+                Assert.That(stabilizer.Expire(0.431d), Is.True);
+                Assert.That(stabilizer.Published, Is.EqualTo(RgbHandGesture.None));
+                Assert.That(stabilizer.Expire(0.5d), Is.False);
+            }
+            Assert.That(stabilizer.Observe(analyzer, open, 3d, out _), Is.EqualTo(!expireBetweenFrames));
+            Assert.That(stabilizer.Published, Is.EqualTo(RgbHandGesture.None));
+            Assert.That(stabilizer.Observe(analyzer, open, 3.125d, out _), Is.False);
+            Assert.That(stabilizer.Observe(analyzer, open, 3.25d, out _), Is.True);
         }
 
         [Test]
@@ -301,6 +430,24 @@ namespace DentalNavigation.Tests
         static RgbHandLandmarkFrame Frame(Vector3[] points, float confidence)
         {
             return new RgbHandLandmarkFrame(points, confidence, true, 1, 0d);
+        }
+
+        static RgbHandLandmarkFrame ImageFrame(Vector3[] widthScaledPoints, float aspect, float rotationDegrees)
+        {
+            var normalized = new Vector3[widthScaledPoints.Length];
+            var radians = rotationDegrees * Mathf.Deg2Rad;
+            var sin = Mathf.Sin(radians);
+            var cos = Mathf.Cos(radians);
+            for (var i = 0; i < normalized.Length; i++)
+            {
+                // Rotate the same physical pose before encoding normalized image coordinates.
+                // Uniform shrinking keeps all landmarks within either image orientation.
+                var x = (widthScaledPoints[i].x - 0.5f) * 0.6f;
+                var y = (widthScaledPoints[i].y - 0.5f) * 0.6f;
+                normalized[i] = new Vector3(0.5f + x * cos - y * sin,
+                    0.5f + (x * sin + y * cos) * aspect, widthScaledPoints[i].z * 0.6f);
+            }
+            return new RgbHandLandmarkFrame(normalized, 0.9f, true, 1, 0d, aspect);
         }
 
         static Vector3[] CreatePinch(float tipSeparation)

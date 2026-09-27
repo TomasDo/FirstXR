@@ -12,7 +12,6 @@ namespace Unity.XR.XREAL.Samples
     public class RgbHandGestureRecognizer : MonoBehaviour
     {
         public const string LogSource = "手势识别";
-        const float GestureStaleSeconds = 0.18f;
         const float StatusIntervalSeconds = 0.5f;
 
         [SerializeField] bool m_RecognitionEnabled;
@@ -30,7 +29,6 @@ namespace Unity.XR.XREAL.Samples
         bool m_HasPendingLandmarks;
         bool m_HasCameraLease;
         double m_NextSubmitTime;
-        double m_LastObservationTime = double.NegativeInfinity;
         double m_NextStatusTime;
 
         public static RgbHandGestureRecognizer Instance => s_Instance;
@@ -82,14 +80,11 @@ namespace Unity.XR.XREAL.Samples
 
         void Update()
         {
-            ConsumeLandmarks();
-
             var now = Time.realtimeSinceStartupAsDouble;
-            if (CurrentGesture != RgbHandGesture.None && now - m_LastObservationTime > GestureStaleSeconds)
-            {
-                m_Stabilizer.Reset();
+            if (m_Stabilizer.Expire(now))
                 SetCurrentGesture(RgbHandGesture.None);
-            }
+
+            ConsumeLandmarks();
 
             if (now >= m_NextStatusTime)
             {
@@ -237,7 +232,6 @@ namespace Unity.XR.XREAL.Samples
             var now = Time.realtimeSinceStartupAsDouble;
             var publishedChanged = m_Stabilizer.Observe(m_Analyzer, frame, now, out var observation);
             LastObservation = observation;
-            m_LastObservationTime = now;
             if (publishedChanged)
                 SetCurrentGesture(m_Stabilizer.Published);
             ObservationUpdated?.Invoke(observation);

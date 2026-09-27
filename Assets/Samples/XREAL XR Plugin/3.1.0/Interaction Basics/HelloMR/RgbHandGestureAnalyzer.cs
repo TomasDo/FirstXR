@@ -57,15 +57,15 @@ namespace Unity.XR.XREAL.Samples
                 return Missing(frame);
 
             var points = frame.Landmarks;
-            var palmScale = Vector3.Distance(points[Wrist], points[MiddleMcp]);
+            var palmScale = Vector3.Distance(GeometryPoint(frame, Wrist), GeometryPoint(frame, MiddleMcp));
             if (palmScale < 0.001f)
                 return Missing(frame);
 
-            var pinchRatio = Vector3.Distance(points[ThumbTip], points[IndexTip]) / palmScale;
-            var index = UpdatePosture(points, IndexMcp, IndexPip, IndexTip, ReadPosture(latch, IndexFinger));
-            var middle = UpdatePosture(points, MiddleMcp, MiddlePip, MiddleTip, ReadPosture(latch, MiddleFinger));
-            var ring = UpdatePosture(points, RingMcp, RingPip, RingTip, ReadPosture(latch, RingFinger));
-            var pinky = UpdatePosture(points, PinkyMcp, PinkyPip, PinkyTip, ReadPosture(latch, PinkyFinger));
+            var pinchRatio = Vector3.Distance(GeometryPoint(frame, ThumbTip), GeometryPoint(frame, IndexTip)) / palmScale;
+            var index = UpdatePosture(frame, IndexMcp, IndexPip, IndexTip, ReadPosture(latch, IndexFinger));
+            var middle = UpdatePosture(frame, MiddleMcp, MiddlePip, MiddleTip, ReadPosture(latch, MiddleFinger));
+            var ring = UpdatePosture(frame, RingMcp, RingPip, RingTip, ReadPosture(latch, RingFinger));
+            var pinky = UpdatePosture(frame, PinkyMcp, PinkyPip, PinkyTip, ReadPosture(latch, PinkyFinger));
 
             var extendedCount = 0;
             if (middle == FingerPosture.Extended) extendedCount++;
@@ -83,7 +83,7 @@ namespace Unity.XR.XREAL.Samples
                 gesture = RgbHandGesture.Ok;
             else if (pinchLatched)
                 gesture = RgbHandGesture.Pinch;
-            else if (IsTwoFinger(points, index, middle, ring, pinky))
+            else if (IsTwoFinger(frame, index, middle, ring, pinky))
                 gesture = RgbHandGesture.TwoFinger;
             else if (IsOpenPalm(index, middle, ring, pinky))
                 gesture = RgbHandGesture.OpenPalm;
@@ -122,7 +122,7 @@ namespace Unity.XR.XREAL.Samples
         }
 
         static bool IsTwoFinger(
-            Vector3[] points,
+            RgbHandLandmarkFrame frame,
             FingerPosture index,
             FingerPosture middle,
             FingerPosture ring,
@@ -134,13 +134,23 @@ namespace Unity.XR.XREAL.Samples
                 || pinky != FingerPosture.Curled)
                 return false;
 
-            return TrySpreadAngle(points[IndexMcp], points[IndexTip], points[MiddleMcp], points[MiddleTip], out var spread)
+            return TrySpreadAngle(GeometryPoint(frame, IndexMcp), GeometryPoint(frame, IndexTip),
+                GeometryPoint(frame, MiddleMcp), GeometryPoint(frame, MiddleTip), out var spread)
                 && spread > TwoFingerSpreadAngle;
         }
 
-        static FingerPosture UpdatePosture(Vector3[] points, int mcp, int pip, int tip, FingerPosture previous)
+        static Vector3 GeometryPoint(RgbHandLandmarkFrame frame, int index)
         {
-            if (!TryJointAngle(points[mcp], points[pip], points[tip], out var angle))
+            // MediaPipe normalizes x/z by width and y by height. Use width units for
+            // geometry, while leaving the original image coordinates for PalmPosition.
+            var point = frame.Landmarks[index];
+            point.y /= frame.ImageAspectRatio;
+            return point;
+        }
+
+        static FingerPosture UpdatePosture(RgbHandLandmarkFrame frame, int mcp, int pip, int tip, FingerPosture previous)
+        {
+            if (!TryJointAngle(GeometryPoint(frame, mcp), GeometryPoint(frame, pip), GeometryPoint(frame, tip), out var angle))
                 return previous;
             if (angle >= ExtendedAngle)
                 return FingerPosture.Extended;

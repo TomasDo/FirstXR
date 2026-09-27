@@ -30,13 +30,18 @@ namespace Unity.XR.XREAL.Samples
             float confidence,
             bool isTracked,
             long sourceSequence,
-            double observedAtSeconds)
+            double observedAtSeconds,
+            float imageAspectRatio = 1f)
         {
+            if (imageAspectRatio <= 0f || float.IsNaN(imageAspectRatio) || float.IsInfinity(imageAspectRatio))
+                throw new ArgumentOutOfRangeException(nameof(imageAspectRatio));
+
             Landmarks = landmarks;
             Confidence = confidence;
             IsTracked = isTracked;
             SourceSequence = sourceSequence;
             ObservedAtSeconds = observedAtSeconds;
+            ImageAspectRatio = imageAspectRatio;
         }
 
         public Vector3[] Landmarks { get; }
@@ -44,6 +49,8 @@ namespace Unity.XR.XREAL.Samples
         public bool IsTracked { get; }
         public long SourceSequence { get; }
         public double ObservedAtSeconds { get; }
+        /// <summary>Input image width / height. The default describes square-image landmarks.</summary>
+        public float ImageAspectRatio { get; }
         public bool IsValid => IsTracked && Landmarks != null && Landmarks.Length >= LandmarkCount;
 
         public static RgbHandLandmarkFrame NotTracked(long sourceSequence, double observedAtSeconds)

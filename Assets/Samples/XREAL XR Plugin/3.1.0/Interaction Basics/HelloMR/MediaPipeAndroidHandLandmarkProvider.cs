@@ -196,7 +196,7 @@ namespace Unity.XR.XREAL.Samples
                         (float)packet[input + 2]);
                 }
                 LandmarksReady?.Invoke(new RgbHandLandmarkFrame(
-                    landmarks, confidence, true, sequence, observedAt));
+                    landmarks, confidence, true, sequence, observedAt, (float)InputWidth / InputHeight));
             }
             catch (Exception error)
             {
