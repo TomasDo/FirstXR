@@ -46,9 +46,9 @@ namespace Unity.XR.XREAL.Samples
 
         public event Action<RgbCameraFrame> FrameReceived;
 
-        public bool IsCapturing => m_CameraTexture != null && m_CameraTexture.IsCapturing;
-        public bool IsReady => m_Initialized && m_CameraTexture != null;
-        public int ConsumerCount => m_Consumers.Count;
+        public bool IsCapturing => RgbFeaturePolicy.Enabled && m_CameraTexture != null && m_CameraTexture.IsCapturing;
+        public bool IsReady => RgbFeaturePolicy.Enabled && m_Initialized && m_CameraTexture != null;
+        public int ConsumerCount => RgbFeaturePolicy.Enabled ? m_Consumers.Count : 0;
         public XREALRGBCameraPlugState PlugState => m_PlugState;
 
         void Awake()
@@ -60,16 +60,23 @@ namespace Unity.XR.XREAL.Samples
             }
 
             s_Instance = this;
-            SubscribeToPlugState();
+            if (RgbFeaturePolicy.Enabled)
+                SubscribeToPlugState();
         }
 
         IEnumerator Start()
         {
+            if (!RgbFeaturePolicy.Enabled)
+                yield break;
+
             yield return InitializeAsync();
         }
 
         void OnEnable()
         {
+            if (!RgbFeaturePolicy.Enabled)
+                return;
+
             SubscribeToPlugState();
             if (m_Initialized)
                 SubscribeToFrames();
@@ -105,6 +112,9 @@ namespace Unity.XR.XREAL.Samples
             if (consumer == null)
                 throw new ArgumentNullException(nameof(consumer));
 
+            if (!RgbFeaturePolicy.Enabled)
+                return;
+
             if (!m_Consumers.Add(consumer))
                 return;
 
@@ -132,17 +142,32 @@ namespace Unity.XR.XREAL.Samples
 
         public bool TryGetLatestFrame(out RgbCameraFrame frame)
         {
+            if (!RgbFeaturePolicy.Enabled)
+            {
+                frame = default;
+                return false;
+            }
+
             frame = m_LatestFrame;
             return frame.IsValid;
         }
 
         IEnumerator InitializeAsync()
         {
+            if (!RgbFeaturePolicy.Enabled)
+                yield break;
+
             if (m_Initialized || m_Initializing)
                 yield break;
 
             m_Initializing = true;
             yield return RequestPermissionIfNeeded();
+
+            if (!RgbFeaturePolicy.Enabled)
+            {
+                m_Initializing = false;
+                yield break;
+            }
 
 #if UNITY_ANDROID && !UNITY_EDITOR
             if (!XREALAndroidPermissionsManager.IsPermissionGranted(AndroidCameraPermission))
@@ -170,6 +195,9 @@ namespace Unity.XR.XREAL.Samples
 
         IEnumerator RequestPermissionIfNeeded()
         {
+            if (!RgbFeaturePolicy.Enabled)
+                yield break;
+
 #if UNITY_ANDROID && !UNITY_EDITOR
             if (XREALAndroidPermissionsManager.IsPermissionGranted(AndroidCameraPermission))
                 yield break;
@@ -189,7 +217,7 @@ namespace Unity.XR.XREAL.Samples
 
         void EnsureCaptureStarted()
         {
-            if (!isActiveAndEnabled || m_Consumers.Count == 0 || m_CameraTexture == null
+            if (!RgbFeaturePolicy.Enabled || !isActiveAndEnabled || m_Consumers.Count == 0 || m_CameraTexture == null
                 || m_CameraTexture.IsCapturing || m_StartCoroutine != null)
                 return;
 
@@ -198,6 +226,12 @@ namespace Unity.XR.XREAL.Samples
 
         IEnumerator StartCaptureWithRetry()
         {
+            if (!RgbFeaturePolicy.Enabled)
+            {
+                m_StartCoroutine = null;
+                yield break;
+            }
+
 #if UNITY_ANDROID && !UNITY_EDITOR
             if (!XREALPlugin.IsHMDFeatureSupported(XREALSupportedFeature.XREAL_FEATURE_RGB_CAMERA))
             {
@@ -207,7 +241,8 @@ namespace Unity.XR.XREAL.Samples
             }
 #endif
 
-            for (var attempt = 1; attempt <= MaxStartAttempts && m_Consumers.Count > 0; attempt++)
+            for (var attempt = 1; attempt <= MaxStartAttempts && m_Consumers.Count > 0
+                && RgbFeaturePolicy.Enabled; attempt++)
             {
 #if UNITY_ANDROID && !UNITY_EDITOR
                 if (m_PlugState == XREALRGBCameraPlugState.PLUGOUT)
@@ -244,7 +279,7 @@ namespace Unity.XR.XREAL.Samples
 
         void SubscribeToFrames()
         {
-            if (m_CameraTexture == null || m_SubscribedToFrames)
+            if (!RgbFeaturePolicy.Enabled || m_CameraTexture == null || m_SubscribedToFrames)
                 return;
             m_CameraTexture.OnRGBCameraUpdate += OnCameraUpdated;
             m_SubscribedToFrames = true;
@@ -260,7 +295,7 @@ namespace Unity.XR.XREAL.Samples
 
         void OnCameraUpdated()
         {
-            if (m_CameraTexture == null)
+            if (!RgbFeaturePolicy.Enabled || m_CameraTexture == null)
                 return;
 
             var textures = m_CameraTexture.GetYUVFormatTextures();
@@ -277,7 +312,7 @@ namespace Unity.XR.XREAL.Samples
 
         void SubscribeToPlugState()
         {
-            if (m_SubscribedToPlugState)
+            if (!RgbFeaturePolicy.Enabled || m_SubscribedToPlugState)
                 return;
             XREALCallbackHandler.OnXREALGlassesRGBCameraPlugState += OnPlugStateChanged;
             m_SubscribedToPlugState = true;
@@ -293,6 +328,9 @@ namespace Unity.XR.XREAL.Samples
 
         void OnPlugStateChanged(XREALRGBCameraPlugState state)
         {
+            if (!RgbFeaturePolicy.Enabled)
+                return;
+
             m_PlugState = state;
             if (state == XREALRGBCameraPlugState.PLUGOUT)
             {

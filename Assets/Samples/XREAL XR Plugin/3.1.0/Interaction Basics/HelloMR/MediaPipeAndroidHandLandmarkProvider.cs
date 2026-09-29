@@ -36,6 +36,12 @@ namespace Unity.XR.XREAL.Samples
 
         public MediaPipeAndroidHandLandmarkProvider()
         {
+            if (!RgbFeaturePolicy.Enabled)
+            {
+                m_Status = RgbFeaturePolicy.DisabledMessage;
+                return;
+            }
+
 #if UNITY_ANDROID && !UNITY_EDITOR
             try
             {
@@ -62,6 +68,9 @@ namespace Unity.XR.XREAL.Samples
         {
             get
             {
+                if (!RgbFeaturePolicy.Enabled)
+                    return false;
+
 #if UNITY_ANDROID && !UNITY_EDITOR
                 try { return !m_Disposed && m_Bridge != null && m_Bridge.Call<bool>("isReady"); }
                 catch { return false; }
@@ -76,7 +85,7 @@ namespace Unity.XR.XREAL.Samples
 
         public bool Start()
         {
-            if (m_Disposed || !IsAvailable)
+            if (!RgbFeaturePolicy.Enabled || m_Disposed || !IsAvailable)
                 return false;
 
             if (m_YuvMaterial == null)
@@ -112,6 +121,9 @@ namespace Unity.XR.XREAL.Samples
 
         public bool TrySubmitFrame(RgbCameraFrame frame)
         {
+            if (!RgbFeaturePolicy.Enabled)
+                return false;
+
             PollResult();
             if (!IsRunning || !frame.IsValid || m_ReadbackPending)
                 return false;
@@ -135,7 +147,7 @@ namespace Unity.XR.XREAL.Samples
                 AsyncGPUReadback.Request(m_InputTexture, 0, TextureFormat.RGBA32, request =>
                 {
                     m_ReadbackPending = false;
-                    if (!m_Running || m_Disposed || request.hasError || m_Bridge == null)
+                    if (!RgbFeaturePolicy.Enabled || !m_Running || m_Disposed || request.hasError || m_Bridge == null)
                         return;
 
                     try
@@ -166,6 +178,9 @@ namespace Unity.XR.XREAL.Samples
 
         void PollResult()
         {
+            if (!RgbFeaturePolicy.Enabled)
+                return;
+
 #if UNITY_ANDROID && !UNITY_EDITOR
             if (m_Bridge == null || m_Disposed)
                 return;

@@ -141,7 +141,7 @@ namespace Unity.XR.XREAL.Samples
                     m_Receivers.Add(key, receiver);
                     return true;
                 }
-                catch (Exception exception) when (exception is IOException || exception is InvalidDataException || exception is UnauthorizedAccessException)
+                catch (Exception exception) when (exception is IOException || exception is InvalidDataException || exception is UnauthorizedAccessException || exception is CryptographicException)
                 {
                     error = exception.Message;
                     return false;
@@ -182,12 +182,9 @@ namespace Unity.XR.XREAL.Samples
             if (!TryGetReceiver(transferNamespace, assetId, out var receiver, out error))
                 return false;
 
-            if (!receiver.TryComplete(out completedPath, out error))
-                return false;
-
-            lock (m_Receivers)
-                m_Receivers.Remove(new TransferAssetKey(transferNamespace, assetId));
-            return true;
+            // Keep the receiver so retries can query full coverage and complete idempotently.
+            // A new store reconstructs the same state from the verified final file.
+            return receiver.TryComplete(out completedPath, out error);
         }
 
         public bool TryGetProgress(string assetId, out DicomTransferProgress progress)
@@ -306,6 +303,7 @@ namespace Unity.XR.XREAL.Samples
             readonly string m_ProgressPath;
             readonly string m_FinalPath;
             readonly List<DicomByteRange> m_Ranges = new List<DicomByteRange>();
+            bool m_Finalized;
 
             public DicomChunkFileReceiver(string rootDirectory, DicomTransferFileDescriptor descriptor)
             {
@@ -316,7 +314,15 @@ namespace Unity.XR.XREAL.Samples
                 m_ProgressPath = Path.Combine(rootDirectory, storageName + ".progress");
                 m_FinalPath = Path.Combine(rootDirectory, storageName + ".dcm");
 
-                if (File.Exists(m_ProgressPath))
+                // Completion removes the partial file and its coverage journal. The final
+                // file is therefore the durable resume record after an application restart.
+                // Check its bytes before advertising full coverage to the sender.
+                if (CompletedFileMatches())
+                {
+                    m_Finalized = true;
+                    m_Ranges.Add(new DicomByteRange(0, descriptor.ExpectedBytes));
+                }
+                else if (File.Exists(m_ProgressPath))
                     LoadProgress();
                 else
                     InitializeNewPart();
@@ -357,7 +363,8 @@ namespace Unity.XR.XREAL.Samples
                         error = "DICOM chunk lies outside the declared asset size.";
                         return false;
                     }
-                    if (!File.Exists(m_PartPath))
+                    var targetPath = m_Finalized ? m_FinalPath : m_PartPath;
+                    if (!File.Exists(targetPath))
                     {
                         error = "DICOM partial file is missing; restart this asset transfer.";
                         return false;
@@ -365,7 +372,8 @@ namespace Unity.XR.XREAL.Samples
 
                     try
                     {
-                        using (var stream = new FileStream(m_PartPath, FileMode.Open, FileAccess.ReadWrite, FileShare.Read))
+                        using (var stream = new FileStream(targetPath, FileMode.Open,
+                                   m_Finalized ? FileAccess.Read : FileAccess.ReadWrite, FileShare.Read))
                         {
                             if (stream.Length != m_Descriptor.ExpectedBytes)
                             {
@@ -375,6 +383,9 @@ namespace Unity.XR.XREAL.Samples
 
                             if (!VerifyOverlappingBytes(stream, offset, data, out error))
                                 return false;
+
+                            if (m_Finalized)
+                                return true;
 
                             stream.Position = offset;
                             stream.Write(data, 0, data.Length);
@@ -399,6 +410,24 @@ namespace Unity.XR.XREAL.Samples
                 {
                     completedPath = string.Empty;
                     error = string.Empty;
+                    if (m_Finalized)
+                    {
+                        try
+                        {
+                            if (!CompletedFileMatches())
+                            {
+                                error = "The completed DICOM file changed after verification; restart this asset transfer.";
+                                return false;
+                            }
+                            completedPath = m_FinalPath;
+                            return true;
+                        }
+                        catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException || exception is CryptographicException)
+                        {
+                            error = exception.Message;
+                            return false;
+                        }
+                    }
                     var progress = new DicomTransferProgress(m_Descriptor, m_Ranges.ToArray());
                     if (!progress.IsComplete)
                     {
@@ -426,22 +455,24 @@ namespace Unity.XR.XREAL.Samples
 
                         if (File.Exists(m_FinalPath))
                         {
-                            string existingHash;
-                            using (var stream = new FileStream(m_FinalPath, FileMode.Open, FileAccess.Read, FileShare.Read))
-                            using (var sha = SHA256.Create())
-                                existingHash = ToHex(sha.ComputeHash(stream));
-                            if (!FixedTimeEquals(existingHash, actualHash))
+                            if (CompletedFileMatches())
                             {
-                                error = "A completed DICOM file with the same asset id contains different data.";
-                                return false;
+                                File.Delete(m_PartPath);
                             }
-                            File.Delete(m_PartPath);
+                            else
+                            {
+                                // Preserve the damaged file for diagnosis; only a freshly
+                                // verified replacement may occupy the stable final path.
+                                File.Move(m_FinalPath, m_FinalPath + ".corrupt-" + Guid.NewGuid().ToString("N"));
+                                File.Move(m_PartPath, m_FinalPath);
+                            }
                         }
                         else
                         {
                             File.Move(m_PartPath, m_FinalPath);
                         }
 
+                        m_Finalized = true;
                         if (File.Exists(m_ProgressPath))
                             File.Delete(m_ProgressPath);
                         completedPath = m_FinalPath;
@@ -452,6 +483,19 @@ namespace Unity.XR.XREAL.Samples
                         error = exception.Message;
                         return false;
                     }
+                }
+            }
+
+            bool CompletedFileMatches()
+            {
+                if (!File.Exists(m_FinalPath))
+                    return false;
+                using (var stream = new FileStream(m_FinalPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    if (stream.Length != m_Descriptor.ExpectedBytes)
+                        return false;
+                    using (var sha = SHA256.Create())
+                        return FixedTimeEquals(ToHex(sha.ComputeHash(stream)), m_Descriptor.Sha256Hex);
                 }
             }
 

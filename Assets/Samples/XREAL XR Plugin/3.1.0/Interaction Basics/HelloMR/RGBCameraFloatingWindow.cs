@@ -30,12 +30,18 @@ namespace Unity.XR.XREAL.Samples
 
         void Awake()
         {
+            if (!RgbFeaturePolicy.Enabled)
+                return;
+
             m_CameraService = RgbCameraFrameService.EnsureInstance(gameObject);
             EnsureGesturePipeline();
         }
 
         void Start()
         {
+            if (!RgbFeaturePolicy.Enabled)
+                return;
+
             var camera = XREALUtility.MainCamera != null ? XREALUtility.MainCamera : Camera.main;
             if (camera != null)
                 CreateFloatingWindow(camera);
@@ -48,6 +54,12 @@ namespace Unity.XR.XREAL.Samples
 
         void OnEnable()
         {
+            if (!RgbFeaturePolicy.Enabled)
+            {
+                BeamProUnifiedLogWindow.SetStatus("RGB 相机", RgbFeaturePolicy.DisabledMessage);
+                return;
+            }
+
             if (m_CameraService == null)
                 m_CameraService = RgbCameraFrameService.EnsureInstance(gameObject);
             if (m_CameraService != null)
@@ -73,14 +85,15 @@ namespace Unity.XR.XREAL.Samples
                 Destroy(m_PreviewMaterial);
         }
 
-        public bool IsWindowVisible => m_WindowVisible;
+        public bool IsWindowVisible => RgbFeaturePolicy.Enabled && m_WindowVisible;
         public bool HasReceivedFirstFrame => m_ReceivedFirstCameraFrame;
-        public bool IsCapturing => m_CameraService != null && m_CameraService.IsCapturing;
+        public bool IsCapturing => RgbFeaturePolicy.Enabled && m_CameraService != null && m_CameraService.IsCapturing;
 
         public bool TryGetYuvTextures(out Texture y, out Texture u, out Texture v)
         {
             y = u = v = null;
-            if (m_CameraService == null || !m_CameraService.TryGetLatestFrame(out var frame))
+            if (!RgbFeaturePolicy.Enabled || m_CameraService == null
+                || !m_CameraService.TryGetLatestFrame(out var frame))
                 return false;
             y = frame.Y;
             u = frame.U;
@@ -95,9 +108,9 @@ namespace Unity.XR.XREAL.Samples
 
         public void SetWindowVisible(bool visible)
         {
-            m_WindowVisible = visible;
+            m_WindowVisible = RgbFeaturePolicy.Enabled && visible;
             if (m_WindowRoot != null)
-                m_WindowRoot.SetActive(visible);
+                m_WindowRoot.SetActive(m_WindowVisible);
         }
 
         /// <summary>
@@ -106,7 +119,11 @@ namespace Unity.XR.XREAL.Samples
         /// </summary>
         public void StartCapture()
         {
-            if (m_LegacyCaptureLease)
+            if (!RgbFeaturePolicy.Enabled || m_LegacyCaptureLease)
+                return;
+            if (m_CameraService == null)
+                m_CameraService = RgbCameraFrameService.EnsureInstance(gameObject);
+            if (m_CameraService == null)
                 return;
             m_LegacyCaptureLease = true;
             m_CameraService.AcquireCapture(this);
@@ -119,6 +136,9 @@ namespace Unity.XR.XREAL.Samples
 
         public Material CreateYuvMaterialInstance()
         {
+            if (!RgbFeaturePolicy.Enabled)
+                return null;
+
             if (m_YuvMaterialTemplate != null)
                 return new Material(m_YuvMaterialTemplate);
 
@@ -136,7 +156,7 @@ namespace Unity.XR.XREAL.Samples
 
         void EnsureGesturePipeline()
         {
-            if (!m_EnableOfflineGesturePipeline)
+            if (!RgbFeaturePolicy.Enabled || !m_EnableOfflineGesturePipeline)
                 return;
 
             var recognizer = FindObjectOfType<RgbHandGestureRecognizer>();
@@ -193,7 +213,7 @@ namespace Unity.XR.XREAL.Samples
 
         void OnCameraFrame(RgbCameraFrame frame)
         {
-            if (!frame.IsValid)
+            if (!RgbFeaturePolicy.Enabled || !frame.IsValid)
                 return;
 
             if (m_PreviewMaterial != null)
@@ -212,7 +232,7 @@ namespace Unity.XR.XREAL.Samples
 
         void Update()
         {
-            if (!m_ShowDebugOnBeamPro || Application.platform != RuntimePlatform.Android)
+            if (!RgbFeaturePolicy.Enabled || !m_ShowDebugOnBeamPro || Application.platform != RuntimePlatform.Android)
                 return;
             if (Time.realtimeSinceStartup < m_NextBeamProStatusRealtime)
                 return;

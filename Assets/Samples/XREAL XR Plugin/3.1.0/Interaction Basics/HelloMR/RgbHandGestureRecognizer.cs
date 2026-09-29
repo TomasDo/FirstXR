@@ -34,8 +34,8 @@ namespace Unity.XR.XREAL.Samples
         public static RgbHandGestureRecognizer Instance => s_Instance;
         public RgbHandGesture CurrentGesture { get; private set; } = RgbHandGesture.None;
         public RgbHandGestureObservation LastObservation { get; private set; }
-        public bool RecognitionEnabled => m_RecognitionEnabled;
-        public bool ProviderAvailable => m_Provider != null && m_Provider.IsAvailable;
+        public bool RecognitionEnabled => RgbFeaturePolicy.Enabled && m_RecognitionEnabled;
+        public bool ProviderAvailable => RgbFeaturePolicy.Enabled && m_Provider != null && m_Provider.IsAvailable;
         public string ProviderName => m_Provider != null ? m_Provider.Name : "not created";
         public string ProviderStatus => m_Provider != null ? m_Provider.Status : "not created";
 
@@ -52,15 +52,21 @@ namespace Unity.XR.XREAL.Samples
                 return;
             }
             s_Instance = this;
-            m_CameraService = RgbCameraFrameService.EnsureInstance(gameObject);
+            if (RgbFeaturePolicy.Enabled)
+                m_CameraService = RgbCameraFrameService.EnsureInstance(gameObject);
         }
 
         void OnEnable()
         {
             if (s_Instance == null)
                 s_Instance = this;
-            if (m_RecognitionEnabled)
+            if (RgbFeaturePolicy.Enabled && m_RecognitionEnabled)
                 StartProviderAndCamera();
+            else if (!RgbFeaturePolicy.Enabled)
+            {
+                m_RecognitionEnabled = false;
+                BeamProUnifiedLogWindow.SetStatus(LogSource, RgbFeaturePolicy.DisabledMessage);
+            }
         }
 
         void OnDisable()
@@ -80,6 +86,9 @@ namespace Unity.XR.XREAL.Samples
 
         void Update()
         {
+            if (!RgbFeaturePolicy.Enabled)
+                return;
+
             var now = Time.realtimeSinceStartupAsDouble;
             if (m_Stabilizer.Expire(now))
                 SetCurrentGesture(RgbHandGesture.None);
@@ -95,6 +104,16 @@ namespace Unity.XR.XREAL.Samples
 
         public void SetRecognitionEnabled(bool enabled)
         {
+            if (!RgbFeaturePolicy.Enabled)
+            {
+                StopProviderAndCamera();
+                m_RecognitionEnabled = false;
+                m_Stabilizer.Reset();
+                SetCurrentGesture(RgbHandGesture.None);
+                BeamProUnifiedLogWindow.SetStatus(LogSource, RgbFeaturePolicy.DisabledMessage);
+                return;
+            }
+
             if (m_RecognitionEnabled == enabled)
                 return;
 
@@ -118,7 +137,7 @@ namespace Unity.XR.XREAL.Samples
 
         public void ToggleRecognitionEnabled()
         {
-            SetRecognitionEnabled(!m_RecognitionEnabled);
+            SetRecognitionEnabled(!RecognitionEnabled);
         }
 
         /// <summary>Re-evaluates the registered runtime provider, for late native bootstrap.</summary>
@@ -127,7 +146,7 @@ namespace Unity.XR.XREAL.Samples
             var wasEnabled = m_RecognitionEnabled;
             StopProviderAndCamera();
             DisposeProvider();
-            if (wasEnabled)
+            if (RgbFeaturePolicy.Enabled && wasEnabled)
                 StartProviderAndCamera();
         }
 
@@ -137,13 +156,13 @@ namespace Unity.XR.XREAL.Samples
             StopProviderAndCamera();
             DisposeProvider();
             m_Provider = provider ?? throw new ArgumentNullException(nameof(provider));
-            if (m_RecognitionEnabled)
+            if (RgbFeaturePolicy.Enabled && m_RecognitionEnabled)
                 StartProviderAndCamera();
         }
 
         void StartProviderAndCamera()
         {
-            if (!m_RecognitionEnabled || !isActiveAndEnabled)
+            if (!RgbFeaturePolicy.Enabled || !m_RecognitionEnabled || !isActiveAndEnabled)
                 return;
 
             if (m_Provider == null)
@@ -201,7 +220,7 @@ namespace Unity.XR.XREAL.Samples
 
         void OnRgbFrame(RgbCameraFrame frame)
         {
-            if (!m_RecognitionEnabled || m_Provider == null || !m_Provider.IsRunning)
+            if (!RgbFeaturePolicy.Enabled || !m_RecognitionEnabled || m_Provider == null || !m_Provider.IsRunning)
                 return;
             if (frame.ReceivedAtSeconds < m_NextSubmitTime)
                 return;
@@ -211,6 +230,9 @@ namespace Unity.XR.XREAL.Samples
 
         void OnLandmarksReady(RgbHandLandmarkFrame frame)
         {
+            if (!RgbFeaturePolicy.Enabled)
+                return;
+
             lock (m_PendingLock)
             {
                 m_PendingLandmarks = frame;
@@ -220,6 +242,9 @@ namespace Unity.XR.XREAL.Samples
 
         void ConsumeLandmarks()
         {
+            if (!RgbFeaturePolicy.Enabled)
+                return;
+
             RgbHandLandmarkFrame frame;
             lock (m_PendingLock)
             {
@@ -259,6 +284,12 @@ namespace Unity.XR.XREAL.Samples
 
         void PublishStatus()
         {
+            if (!RgbFeaturePolicy.Enabled)
+            {
+                BeamProUnifiedLogWindow.SetStatus(LogSource, RgbFeaturePolicy.DisabledMessage);
+                return;
+            }
+
             var enabled = m_RecognitionEnabled ? "开" : "关";
             var availability = ProviderAvailable ? ProviderStatus : $"不可用: {ProviderStatus}";
             BeamProUnifiedLogWindow.SetStatus(

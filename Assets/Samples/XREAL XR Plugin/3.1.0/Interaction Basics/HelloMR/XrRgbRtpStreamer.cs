@@ -38,7 +38,7 @@ namespace Unity.XR.XREAL.Samples
         public static XrRgbRtpStreamer Instance => s_Instance;
         public bool IsStreaming => m_Encoder != null;
         public bool IncludeXr => m_IncludeXr;
-        public bool IncludeRgb => m_IncludeRgb;
+        public bool IncludeRgb => RgbFeaturePolicy.Enabled && m_IncludeRgb;
         public string DestinationUri => $"rtp://{m_DestinationHost}:{m_DestinationPort}";
         public string Status => m_Status;
         public string FaultMessage => m_FaultMessage;
@@ -46,7 +46,7 @@ namespace Unity.XR.XREAL.Samples
         public RenderTexture CompositeTexture => m_CompositeTexture;
         public bool IsRuntimeSupported => Application.platform == RuntimePlatform.Android && !Application.isEditor;
         public bool HasLiveXrFrame => m_LeftEye != null && m_LeftEye.HasLiveXrFrame;
-        public bool HasLiveRgbFrame => m_CameraService != null
+        public bool HasLiveRgbFrame => RgbFeaturePolicy.Enabled && m_CameraService != null
             && m_CameraService.TryGetLatestFrame(out var frame)
             && frame.IsValid
             && Time.realtimeSinceStartupAsDouble - frame.ReceivedAtSeconds <= 0.25;
@@ -58,7 +58,7 @@ namespace Unity.XR.XREAL.Samples
                     return m_FaultMessage;
                 if (m_IncludeXr && !HasLiveXrFrame)
                     return "actual XR left-eye output is not currently available";
-                if (m_IncludeRgb && !HasLiveRgbFrame)
+                if (IncludeRgb && !HasLiveRgbFrame)
                     return "RGB camera frame is not currently available";
                 return string.Empty;
             }
@@ -79,12 +79,11 @@ namespace Unity.XR.XREAL.Samples
 
         void Start()
         {
-            m_CameraService = RgbCameraFrameService.EnsureInstance();
             if (m_LeftEye == null)
                 m_LeftEye = FindObjectOfType<LeftEyeDisplayWindow>();
             BindLeftEye();
 
-            m_IncludeRgb = m_IncludeRgbOnStart;
+            m_IncludeRgb = RgbFeaturePolicy.Enabled && m_IncludeRgbOnStart;
             if (m_StreamOnStart)
                 SetStreamingEnabled(true);
         }
@@ -203,6 +202,12 @@ namespace Unity.XR.XREAL.Samples
         public bool TryApplyControl(DentalObservationControlState control, out string error)
         {
             error = string.Empty;
+            if (control.RgbEnabled && !RgbFeaturePolicy.Enabled)
+            {
+                error = RgbFeaturePolicy.DisabledMessage;
+                return false;
+            }
+
             var streamRequested = control.MirrorEnabled || control.RgbEnabled;
             var nextWidth = control.Width == 0 ? m_OutputWidth : control.Width;
             var nextHeight = control.Height == 0 ? m_OutputHeight : control.Height;
@@ -282,6 +287,11 @@ namespace Unity.XR.XREAL.Samples
         /// <summary>Navigation-side control hook. Streaming is off by default.</summary>
         public bool SetStreamingEnabled(bool enabled)
         {
+            if (!RgbFeaturePolicy.Enabled)
+            {
+                m_IncludeRgb = false;
+                ReleaseRgbLease();
+            }
             m_StreamingRequested = enabled;
             if (!enabled)
             {
@@ -301,6 +311,13 @@ namespace Unity.XR.XREAL.Samples
         /// </summary>
         public void SetRgbViewEnabled(bool enabled)
         {
+            if (enabled && !RgbFeaturePolicy.Enabled)
+            {
+                m_IncludeRgb = false;
+                ReleaseRgbLease();
+                SetStatus(RgbFeaturePolicy.DisabledMessage);
+                return;
+            }
             m_IncludeRgb = enabled;
             ApplyRgbLease();
             SetStatus(enabled ? "RGB pane requested" : "RGB pane disabled; gesture camera lease unchanged");
@@ -316,6 +333,15 @@ namespace Unity.XR.XREAL.Samples
         {
             if (m_Encoder != null)
                 return true;
+
+            // The XREAL encoder starts on its render thread. If the XR display
+            // has not produced a frame yet, starting an XR-only stream cannot
+            // deliver video and can abort the Android player inside the SDK.
+            if (m_IncludeXr && !IncludeRgb && !HasLiveXrFrame)
+            {
+                SetStatus("RTP unavailable: actual XR left-eye output is not currently available", true);
+                return false;
+            }
 
             if (!IsRuntimeSupported)
             {
@@ -477,7 +503,7 @@ namespace Unity.XR.XREAL.Samples
                     Graphics.DrawTexture(AspectFit(xrTexture, leftPane), xrTexture);
                 }
 
-                if (m_IncludeRgb && m_CameraService != null
+                if (IncludeRgb && m_CameraService != null
                     && m_CameraService.TryGetLatestFrame(out var rgbFrame) && rgbFrame.IsValid)
                 {
                     EnsureYuvMaterial();
@@ -549,24 +575,29 @@ namespace Unity.XR.XREAL.Samples
 
         void ApplyRgbLease()
         {
-            var shouldHold = m_StreamingRequested && m_Encoder != null && m_IncludeRgb;
-            if (shouldHold == m_HasRgbLease)
+            var shouldHold = RgbFeaturePolicy.Enabled && m_StreamingRequested && m_Encoder != null && m_IncludeRgb;
+            if (!shouldHold)
+            {
+                ReleaseRgbLease();
+                return;
+            }
+            if (m_HasRgbLease)
                 return;
             if (m_CameraService == null)
                 m_CameraService = RgbCameraFrameService.EnsureInstance();
-            m_HasRgbLease = shouldHold;
-            if (shouldHold)
-                m_CameraService.AcquireCapture(this);
-            else
-                m_CameraService.ReleaseCapture(this);
+            if (m_CameraService == null)
+                return;
+            m_HasRgbLease = true;
+            m_CameraService.AcquireCapture(this);
         }
 
         void ReleaseRgbLease()
         {
-            if (!m_HasRgbLease || m_CameraService == null)
+            if (!m_HasRgbLease)
                 return;
             m_HasRgbLease = false;
-            m_CameraService.ReleaseCapture(this);
+            if (m_CameraService != null)
+                m_CameraService.ReleaseCapture(this);
         }
 
         void ReleaseGraphicsResources()

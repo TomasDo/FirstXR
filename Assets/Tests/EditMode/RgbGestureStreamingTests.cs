@@ -394,13 +394,16 @@ namespace DentalNavigation.Tests
         }
 
         [Test]
-        public void RuntimeProviderIsExplicitlyUnavailableWithoutRegisteredBridge()
+        public void RuntimeProviderExplainsWhyItIsUnavailable()
         {
             RgbHandLandmarkProviderRegistry.ClearFactory();
             using (var provider = RgbHandLandmarkProviderRegistry.CreateProvider())
             {
                 Assert.That(provider.IsAvailable, Is.False);
-                StringAssert.Contains("MediaPipe", provider.Status);
+                if (RgbFeaturePolicy.Enabled)
+                    StringAssert.Contains("MediaPipe", provider.Status);
+                else
+                    Assert.That(provider.Status, Is.EqualTo(RgbFeaturePolicy.DisabledMessage));
             }
         }
 

@@ -135,6 +135,8 @@ namespace Unity.XR.XREAL.Samples
         {
             get
             {
+                if (!RgbFeaturePolicy.Enabled)
+                    return false;
                 EnsureRGBCameraFloatingWindowReference();
                 return m_RGBCameraFloatingWindow != null;
             }
@@ -144,6 +146,8 @@ namespace Unity.XR.XREAL.Samples
         {
             get
             {
+                if (!RgbFeaturePolicy.Enabled)
+                    return false;
                 EnsureRGBCameraFloatingWindowReference();
                 return m_RGBCameraFloatingWindow != null && m_RGBCameraFloatingWindow.IsWindowVisible;
             }
@@ -153,6 +157,8 @@ namespace Unity.XR.XREAL.Samples
         {
             get
             {
+                if (!RgbFeaturePolicy.Enabled)
+                    return false;
                 EnsureRgbHandGestureRecognizer();
                 return m_RgbHandGestureRecognizer != null && m_RgbHandGestureRecognizer.RecognitionEnabled;
             }
@@ -183,9 +189,12 @@ namespace Unity.XR.XREAL.Samples
             EnsureGlassesControlWindowReference();
             EnsureReferenceCubeSpawnerReference();
             EnsureRGBCameraFloatingWindowReference();
-            EnsureRgbHandGestureRecognizer();
-            if (m_RgbHandGestureRecognizer != null)
-                m_RgbHandGestureRecognizer.SetRecognitionEnabled(m_EnableRgbGestureRecognition);
+            if (RgbFeaturePolicy.Enabled)
+            {
+                EnsureRgbHandGestureRecognizer();
+                if (m_RgbHandGestureRecognizer != null)
+                    m_RgbHandGestureRecognizer.SetRecognitionEnabled(m_EnableRgbGestureRecognition);
+            }
 
             EnsureDentalRobotBeamProPanel();
             EnsureBeamProPagedController();
@@ -247,6 +256,9 @@ namespace Unity.XR.XREAL.Samples
 
         void EnsureRgbHandGestureRecognizer()
         {
+            if (!RgbFeaturePolicy.Enabled)
+                return;
+
             if (m_RgbHandGestureRecognizer == null)
                 m_RgbHandGestureRecognizer = FindObjectOfType<RgbHandGestureRecognizer>();
 
@@ -391,6 +403,9 @@ namespace Unity.XR.XREAL.Samples
 
         public void ToggleLocalRgbPreview()
         {
+            if (!RgbFeaturePolicy.Enabled)
+                return;
+
             EnsureRGBCameraFloatingWindowReference();
             if (m_RGBCameraFloatingWindow == null)
                 return;
@@ -405,6 +420,9 @@ namespace Unity.XR.XREAL.Samples
 
         public void ToggleGestureRecognition()
         {
+            if (!RgbFeaturePolicy.Enabled)
+                return;
+
             EnsureRgbHandGestureRecognizer();
             if (m_RgbHandGestureRecognizer == null)
                 return;
@@ -605,20 +623,30 @@ namespace Unity.XR.XREAL.Samples
                 ToggleGlassesControlWindow();
 
             EnsureRGBCameraFloatingWindowReference();
-            if (m_RGBCameraFloatingWindow != null)
+            if (!RgbFeaturePolicy.Enabled || m_RGBCameraFloatingWindow != null)
             {
                 y += height + rowSpacing;
-                string rgbLabel = m_RGBCameraFloatingWindow.IsWindowVisible ? k_HideRgbWindowLabel : k_ShowRgbWindowLabel;
+                string rgbLabel = !RgbFeaturePolicy.Enabled
+                    ? RgbFeaturePolicy.DisabledMessage
+                    : m_RGBCameraFloatingWindow.IsWindowVisible ? k_HideRgbWindowLabel : k_ShowRgbWindowLabel;
+                var previousEnabled = GUI.enabled;
+                GUI.enabled = previousEnabled && RgbFeaturePolicy.Enabled;
                 if (GUI.Button(new Rect(x, y, width, height), rgbLabel))
                     m_RGBCameraFloatingWindow.ToggleWindowVisible();
+                GUI.enabled = previousEnabled;
             }
 
             if (m_ShowBeamProGestureToggle)
             {
-                EnsureRgbHandGestureRecognizer();
+                if (RgbFeaturePolicy.Enabled)
+                    EnsureRgbHandGestureRecognizer();
                 y += height + rowSpacing;
                 var gestureOn = m_RgbHandGestureRecognizer != null && m_RgbHandGestureRecognizer.RecognitionEnabled;
-                var gestureLabel = gestureOn ? k_DisableGestureLabel : k_EnableGestureLabel;
+                var gestureLabel = !RgbFeaturePolicy.Enabled
+                    ? RgbFeaturePolicy.DisabledMessage
+                    : gestureOn ? k_DisableGestureLabel : k_EnableGestureLabel;
+                var previousEnabled = GUI.enabled;
+                GUI.enabled = previousEnabled && RgbFeaturePolicy.Enabled;
                 if (GUI.Button(new Rect(x, y, width, height), gestureLabel))
                 {
                     if (m_RgbHandGestureRecognizer != null)
@@ -627,6 +655,7 @@ namespace Unity.XR.XREAL.Samples
                         m_EnableRgbGestureRecognition = m_RgbHandGestureRecognizer.RecognitionEnabled;
                     }
                 }
+                GUI.enabled = previousEnabled;
             }
 
             if (!m_ShowBeamProObjectMoveButtons)
@@ -652,7 +681,7 @@ namespace Unity.XR.XREAL.Samples
 
             rows += 1;
             EnsureRGBCameraFloatingWindowReference();
-            if (m_RGBCameraFloatingWindow != null)
+            if (!RgbFeaturePolicy.Enabled || m_RGBCameraFloatingWindow != null)
                 rows += 1;
 
             if (m_ShowBeamProGestureToggle)

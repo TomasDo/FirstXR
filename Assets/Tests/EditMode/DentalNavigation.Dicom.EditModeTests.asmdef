@@ -1,7 +1,10 @@
 {
     "name": "DentalNavigation.Dicom.EditModeTests",
     "references": [
-        "Unity.XR.XREAL.Samples.InteractionBasics"
+        "Unity.XR.XREAL.Samples.InteractionBasics",
+        "Unity.XR.XREAL",
+        "Unity.TextMeshPro",
+        "Unity.UGUI"
     ],
     "includePlatforms": [
         "Editor"

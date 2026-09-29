@@ -399,31 +399,8 @@ namespace Unity.XR.XREAL.Samples
 
         void ApplyStatus(DentalNavigationSnapshot snap, DentalHudEvaluation eval)
         {
-            string label;
-            Color dot;
-            if (snap.Link == DentalLinkState.Lost || snap.Link == DentalLinkState.Idle)
-            {
-                label = "未连接";
-                dot = Red;
-            }
-            else if (snap.Link == DentalLinkState.Connecting)
-            {
-                label = "连接中";
-                dot = Amber;
-            }
-            else if (eval.DashNumbers || eval.Overall == DentalMetricGrade.Stale)
-            {
-                label = "数据中断";
-                dot = Gray;
-            }
-            else
-            {
-                label = "已连接";
-                dot = Green;
-            }
-
-            m_Views.LinkLabel.text = label;
-            m_Views.LinkDot.color = dot;
+            m_Views.LinkLabel.text = DentalConnectionPresentation.Label(snap.Link);
+            m_Views.LinkDot.color = DentalConnectionPresentation.IndicatorColor(snap.Link, Green, Amber, Red);
             var identity = snap.HasContext
                 ? string.Format("{0}  {1}  {2}", Short(snap.ToothId, 8), Short(snap.PlanId, 9), Short(snap.ToolId, 8))
                 : Short(snap.DatasetId, 18);

@@ -55,7 +55,11 @@ namespace Unity.XR.XREAL.Samples
             if (snap.Link == DentalLinkState.Connecting && !snap.HasMetadata)
                 return Unavailable(string.Empty, true, false);
 
-            if (!snap.HasMetadata || snap.AgeSeconds > HideSeconds)
+            if (!snap.HasMetadata)
+                return Unavailable(string.IsNullOrEmpty(snap.InvalidReason) ? "等待导航数据" : snap.InvalidReason,
+                    true, false);
+
+            if (snap.AgeSeconds > HideSeconds)
                 return Unavailable("导航数据中断", true, false);
 
             if (snap.AgeSeconds > AgingSeconds)

@@ -80,6 +80,9 @@ namespace Unity.XR.XREAL.Samples
 
         public static IRgbHandLandmarkProvider CreateProvider()
         {
+            if (!RgbFeaturePolicy.Enabled)
+                return new UnavailableRgbHandLandmarkProvider(RgbFeaturePolicy.DisabledMessage);
+
             Func<IRgbHandLandmarkProvider> factory;
             lock (s_Lock)
                 factory = s_Factory;

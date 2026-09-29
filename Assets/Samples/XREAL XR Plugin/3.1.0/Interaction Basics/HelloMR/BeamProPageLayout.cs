@@ -129,6 +129,7 @@ namespace Unity.XR.XREAL.Samples
         public Rect VisibleSafeAreaPixels { get; internal set; }
         public Rect Root { get; internal set; }
         public Rect TopStatusBar { get; internal set; }
+        public Rect ExitButton { get; internal set; }
         public Rect ContentViewport { get; internal set; }
         public Rect BottomTabBar { get; internal set; }
         public Rect[] TabButtons { get; internal set; }
@@ -159,6 +160,7 @@ namespace Unity.XR.XREAL.Samples
         public const float Gap = 12f;
         public const float MinimumTouchHeight = 56f;
         public const float TopStatusHeight = 72f;
+        public const float ExitButtonWidth = 112f;
         public const float BottomTabsHeight = 72f;
         public const float ScrollbarGutter = 20f;
 
@@ -205,6 +207,8 @@ namespace Unity.XR.XREAL.Samples
                 VisibleSafeAreaPixels = new Rect(safeArea.xMin, safeTop, safeArea.width, visiblePixelHeight),
                 Root = root,
                 TopStatusBar = topStatus,
+                ExitButton = new Rect(logicalWidth - OuterMargin - ExitButtonWidth,
+                    8f, ExitButtonWidth, MinimumTouchHeight),
                 ContentViewport = content,
                 BottomTabBar = bottomTabs,
                 TabButtons = CreateTabButtons(logicalWidth, bottomTabs.yMin, request.EngineerMode ? 3 : 2),

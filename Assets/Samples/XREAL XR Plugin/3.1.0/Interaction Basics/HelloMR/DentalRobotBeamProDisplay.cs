@@ -224,9 +224,9 @@ namespace Unity.XR.XREAL.Samples
             GUI.Label(new Rect(x, y, width, 36f), "手术导航 · XREAL", m_TitleStyle);
             y += 40f;
 
-            var linkText = LinkPhrase(snap, eval);
+            var linkText = DentalConnectionPresentation.Label(snap.Link);
             var previousContent = GUI.contentColor;
-            GUI.contentColor = ColorForGrade(eval.Overall, true);
+            GUI.contentColor = DentalConnectionPresentation.IndicatorColor(snap.Link, Green, Amber, Red);
             GUI.Label(new Rect(x, y, width, 32f),
                 $"{linkText}    {ContextPhrase(snap)}    {AgeText(snap, eval)}",
                 m_CaptionStyle);
@@ -426,17 +426,6 @@ namespace Unity.XR.XREAL.Samples
             if (!eval.ShowAge || float.IsInfinity(snap.AgeSeconds))
                 return string.Empty;
             return $"{Mathf.RoundToInt(snap.AgeSeconds * 1000f)}ms";
-        }
-
-        static string LinkPhrase(DentalNavigationSnapshot snap, DentalHudEvaluation eval)
-        {
-            if (snap.Link == DentalLinkState.Lost || snap.Link == DentalLinkState.Idle)
-                return "未连接";
-            if (snap.Link == DentalLinkState.Connecting)
-                return "连接中";
-            if (eval.DashNumbers || eval.Overall == DentalMetricGrade.Stale)
-                return "数据中断";
-            return "已连接";
         }
 
         static string OverallPhrase(DentalMetricGrade overall)

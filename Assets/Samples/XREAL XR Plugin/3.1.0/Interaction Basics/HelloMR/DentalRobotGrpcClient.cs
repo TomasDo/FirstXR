@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using Dentalmodeltransfer;
 using Google.Protobuf;
 using Grpc.Core;
-using Grpc.Net.Client;
 using UnityEngine;
 
 namespace Unity.XR.XREAL.Samples
@@ -86,6 +85,8 @@ namespace Unity.XR.XREAL.Samples
         ulong m_LatestFrameContextVersion;
         ulong m_LatestFrameSequence;
         bool m_HasLatestFrameSequence;
+        long m_LatestFrameReceivedTicks;
+        long m_LastAcceptedFrameReceivedTicks;
 
         ModelMetadata m_LatestLegacyMetadata;
         bool m_HasLatestLegacyMetadata;
@@ -389,9 +390,7 @@ namespace Unity.XR.XREAL.Samples
         {
             try
             {
-                AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
-
-                using (var channel = GrpcChannel.ForAddress(serverAddress))
+                using (var channel = DentalRobotGrpcChannelFactory.Create(serverAddress))
                 {
                     var client = new DentalModelTransfer.DentalModelTransferClient(channel.CreateCallInvoker());
                     try
@@ -540,7 +539,8 @@ namespace Unity.XR.XREAL.Samples
                         request.RequestedCapabilities.Add(Capability.SliceControl);
                         request.RequestedCapabilities.Add(Capability.DisplayLayout);
                         request.RequestedCapabilities.Add(Capability.XrMirror);
-                        request.RequestedCapabilities.Add(Capability.RgbView);
+                        if (RgbFeaturePolicy.Enabled)
+                            request.RequestedCapabilities.Add(Capability.RgbView);
                     }
 
                     await writer.EnqueueAsync(new ClientMessage { Request = request }, cancellationToken).ConfigureAwait(false);
@@ -916,29 +916,47 @@ namespace Unity.XR.XREAL.Samples
                 return;
             }
             var control = ToDomain(message);
+            var rejectionMessage = "observation control rejected";
             var accepted = await EnqueueMainThreadAsync(() =>
             {
+                var streamer = XrRgbRtpStreamer.Instance;
+                if (control.RgbEnabled && !RgbFeaturePolicy.Enabled)
+                {
+                    rejectionMessage = RgbFeaturePolicy.DisabledMessage;
+                    QueueObservationStatus(
+                        control.SessionId,
+                        control.ContextVersion,
+                        control.ControlVersion,
+                        streamer != null && streamer.IsStreaming && streamer.IncludeXr && streamer.HasLiveXrFrame,
+                        streamer != null && streamer.IsStreaming && streamer.IncludeRgb && streamer.HasLiveRgbFrame,
+                        rejectionMessage);
+                    return false;
+                }
+
                 var state = DentalNavigationState.EnsureInstance();
                 if (!state.CanApplyObservationControl(control))
                     return false;
 
-                var streamer = XrRgbRtpStreamer.Instance;
                 if (streamer == null)
                 {
                     var disabled = !control.MirrorEnabled && !control.RgbEnabled;
                     if (disabled)
                         state.ApplyObservationControl(control);
+                    else
+                        rejectionMessage = "XR/RGB streamer is not ready";
                     QueueObservationStatus(
                         control.SessionId,
                         control.ContextVersion,
                         control.ControlVersion,
                         false,
                         false,
-                        disabled ? string.Empty : "XR/RGB streamer is not ready");
+                        disabled ? string.Empty : rejectionMessage);
                     return disabled;
                 }
 
                 var executionOk = streamer.TryApplyControl(control, out var executionError);
+                if (!executionOk && !string.IsNullOrEmpty(executionError))
+                    rejectionMessage = executionError;
                 if (executionOk && !state.ApplyObservationControl(control))
                     return false;
                 QueueObservationStatus(
@@ -958,7 +976,7 @@ namespace Unity.XR.XREAL.Samples
                 "observation_control",
                 control.ControlVersion,
                 accepted,
-                accepted ? "observation control applied" : "observation control rejected",
+                accepted ? "observation control applied" : rejectionMessage,
                 cancellationToken).ConfigureAwait(false);
         }
 
@@ -1887,36 +1905,74 @@ namespace Unity.XR.XREAL.Samples
                 if (m_HasLatestFrameSequence && sameSession)
                 {
                     if (frame.ContextVersion < m_LatestFrameContextVersion)
+                    {
+                        DentalPerformanceDiagnostics.RecordNavigationRejected();
                         return;
+                    }
                     if (frame.ContextVersion == m_LatestFrameContextVersion && frame.Sequence <= m_LatestFrameSequence)
+                    {
+                        DentalPerformanceDiagnostics.RecordNavigationRejected();
                         return;
+                    }
                 }
 
+                var receiveTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+                var receiveUnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                var sameContext = m_HasLatestFrameSequence && sameSession
+                    && frame.ContextVersion == m_LatestFrameContextVersion;
+                var hasReceiveGap = sameContext && m_LastAcceptedFrameReceivedTicks > 0
+                    && receiveTicks >= m_LastAcceptedFrameReceivedTicks;
+                var receiveGapMs = hasReceiveGap
+                    ? (float)((receiveTicks - m_LastAcceptedFrameReceivedTicks) * 1000.0
+                        / System.Diagnostics.Stopwatch.Frequency)
+                    : 0f;
+                var skippedSequences = sameContext && frame.Sequence - m_LatestFrameSequence > 1
+                    ? frame.Sequence - m_LatestFrameSequence - 1
+                    : 0;
+                const long earliestSupportedUnixMs = 946684800000L; // 2000-01-01 UTC
+                var sourceTimeValid = frame.CaptureTimeUnixMs >= earliestSupportedUnixMs
+                    && frame.CaptureTimeUnixMs <= receiveUnixMs + 5000L;
+                var sourceAgeMs = sourceTimeValid
+                    ? (float)((double)receiveUnixMs - frame.CaptureTimeUnixMs)
+                    : 0f;
+                var overwrotePending = m_HasLatestFrame;
                 m_LatestFrame = frame.Clone();
                 m_HasLatestFrame = true;
                 m_HasLatestFrameSequence = true;
                 m_LatestFrameSessionId = frame.SessionId ?? string.Empty;
                 m_LatestFrameContextVersion = frame.ContextVersion;
                 m_LatestFrameSequence = frame.Sequence;
+                m_LatestFrameReceivedTicks = receiveTicks;
+                m_LastAcceptedFrameReceivedTicks = receiveTicks;
+                DentalPerformanceDiagnostics.RecordNavigationReceived(
+                    receiveGapMs, hasReceiveGap, sourceAgeMs, sourceTimeValid,
+                    skippedSequences, overwrotePending);
             }
         }
 
         void ApplyLatestNavigationFrame()
         {
             NavigationFrame frame;
+            long receiveTicks;
             lock (m_LatestFrameLock)
             {
                 if (!m_HasLatestFrame)
                     return;
 
                 frame = m_LatestFrame;
+                receiveTicks = m_LatestFrameReceivedTicks;
                 m_LatestFrame = null;
                 m_HasLatestFrame = false;
             }
 
             var unitsValid = frame.DistanceUnit == DistanceUnit.Millimeter && frame.AngleUnit == AngleUnit.Degree;
             var data = ToDomain(frame, unitsValid);
-            DentalNavigationState.EnsureInstance().ApplyNavigationFrame(data);
+            var accepted = DentalNavigationState.EnsureInstance().ApplyNavigationFrame(data);
+            var applyTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+            var receiveToApplyMs = receiveTicks > 0 && applyTicks >= receiveTicks
+                ? (float)((applyTicks - receiveTicks) * 1000.0 / System.Diagnostics.Stopwatch.Frequency)
+                : 0f;
+            DentalPerformanceDiagnostics.RecordNavigationApplied(receiveToApplyMs, accepted);
         }
 
         void StoreLatestLegacyMetadata(ModelMetadata metadata)
@@ -1962,6 +2018,8 @@ namespace Unity.XR.XREAL.Samples
                 m_LatestFrameSessionId = string.Empty;
                 m_LatestFrameContextVersion = 0;
                 m_LatestFrameSequence = 0;
+                m_LatestFrameReceivedTicks = 0;
+                m_LastAcceptedFrameReceivedTicks = 0;
             }
 
             lock (m_LatestLegacyMetadataLock)

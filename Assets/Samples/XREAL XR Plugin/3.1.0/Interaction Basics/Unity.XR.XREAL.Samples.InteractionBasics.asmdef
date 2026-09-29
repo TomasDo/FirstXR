@@ -7,7 +7,8 @@
         "Unity.XR.Interaction.Toolkit",
         "Unity.TextMeshPro",
         "Unity.UGUI",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "Cysharp.Net.Http.YetAnotherHttpHandler"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

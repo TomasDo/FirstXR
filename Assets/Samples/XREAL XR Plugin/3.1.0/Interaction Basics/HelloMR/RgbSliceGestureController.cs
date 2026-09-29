@@ -66,6 +66,9 @@ namespace Unity.XR.XREAL.Samples
 
         void Start()
         {
+            if (!RgbFeaturePolicy.Enabled)
+                return;
+
             BindRecognizer();
             var camera = XREALUtility.MainCamera != null ? XREALUtility.MainCamera : Camera.main;
             m_Head = camera != null ? camera.transform : null;
@@ -73,7 +76,8 @@ namespace Unity.XR.XREAL.Samples
 
         void OnEnable()
         {
-            BindRecognizer();
+            if (RgbFeaturePolicy.Enabled)
+                BindRecognizer();
         }
 
         void OnDisable()
@@ -98,6 +102,9 @@ namespace Unity.XR.XREAL.Samples
 
         void Update()
         {
+            if (!RgbFeaturePolicy.Enabled)
+                return;
+
             if (m_Recognizer == null)
                 BindRecognizer();
             UpdateHeadMotion();
@@ -130,6 +137,9 @@ namespace Unity.XR.XREAL.Samples
 
         void BindRecognizer()
         {
+            if (!RgbFeaturePolicy.Enabled)
+                return;
+
             var recognizer = RgbHandGestureRecognizer.Instance;
             if (recognizer == null)
                 recognizer = FindObjectOfType<RgbHandGestureRecognizer>();
@@ -144,7 +154,8 @@ namespace Unity.XR.XREAL.Samples
 
         void OnObservation(RgbHandGestureObservation observation)
         {
-            m_StateMachine.Observe(observation, Time.realtimeSinceStartupAsDouble, m_HeadMoving);
+            if (RgbFeaturePolicy.Enabled)
+                m_StateMachine.Observe(observation, Time.realtimeSinceStartupAsDouble, m_HeadMoving);
         }
 
         void UpdateHeadMotion()
@@ -181,6 +192,9 @@ namespace Unity.XR.XREAL.Samples
 
         void OnStateMachineStep(int step, ulong controlVersion)
         {
+            if (!RgbFeaturePolicy.Enabled)
+                return;
+
             var args = new RgbSliceStepEventArgs(step, controlVersion, Time.realtimeSinceStartupAsDouble);
             SliceStepRequested?.Invoke(this, args);
             AnySliceStepRequested?.Invoke(args);

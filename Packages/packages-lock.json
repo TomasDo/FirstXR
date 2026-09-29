@@ -1,5 +1,11 @@
 {
   "dependencies": {
+    "com.cysharp.yetanotherhttphandler": {
+      "version": "file:com.cysharp.yetanotherhttphandler",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.unity.adaptiveperformance": {
       "version": "5.1.6",
       "depth": 0,

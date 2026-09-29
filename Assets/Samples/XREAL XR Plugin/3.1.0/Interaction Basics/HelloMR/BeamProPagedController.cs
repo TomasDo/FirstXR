@@ -240,7 +240,8 @@ namespace Unity.XR.XREAL.Samples
             var topStatusContentHeight = MeasuredHeaderHeight(
                 headerContext,
                 headerAlert,
-                initialLayout.TopStatusBar.width);
+                initialLayout.ExitButton.xMin - BeamProPageLayoutCalculator.Gap
+                    - BeamProPageLayoutCalculator.OuterMargin);
 
             var layout = BeamProPageLayoutCalculator.Calculate(new BeamProPageLayoutRequest(
                 new Vector2(Screen.width, Screen.height),
@@ -300,7 +301,7 @@ namespace Unity.XR.XREAL.Samples
                     Quaternion.identity,
                     new Vector3(layout.Scale, layout.Scale, 1f));
                 DrawFilledRect(layout.Root, Background);
-                DrawHeader(layout.TopStatusBar, snapshot, evaluation);
+                DrawHeader(layout.TopStatusBar, layout.ExitButton, snapshot, evaluation);
 
                 switch (layout.SelectedPage)
                 {
@@ -334,9 +335,9 @@ namespace Unity.XR.XREAL.Samples
             return Mathf.Max(minimum, m_BodyStyle.CalcHeight(new GUIContent(text ?? string.Empty), contentWidth) + chrome);
         }
 
-        float MeasuredHeaderHeight(string context, string alert, float width)
+        float MeasuredHeaderHeight(string context, string alert, float availableTextWidth)
         {
-            var contentWidth = Mathf.Max(80f, width - 40f);
+            var contentWidth = Mathf.Max(80f, availableTextWidth);
             var contextHeight = Mathf.Max(20f,
                 m_HeaderContextStyle.CalcHeight(new GUIContent(context ?? string.Empty), contentWidth));
             var alertHeight = Mathf.Max(18f,
@@ -345,26 +346,35 @@ namespace Unity.XR.XREAL.Samples
                 34f + contextHeight + alertHeight + 8f);
         }
 
-        void DrawHeader(Rect rect, DentalNavigationSnapshot snapshot, DentalHudEvaluation evaluation)
+        void DrawHeader(Rect rect, Rect exitButton, DentalNavigationSnapshot snapshot,
+            DentalHudEvaluation evaluation)
         {
             DrawFilledRect(rect, HeaderBackground);
-            var link = LinkPhrase(snapshot, evaluation);
-            var linkColor = LinkColor(snapshot, evaluation);
+            var textWidth = exitButton.xMin - BeamProPageLayoutCalculator.Gap
+                - BeamProPageLayoutCalculator.OuterMargin;
+            var link = DentalConnectionPresentation.Label(snapshot.Link);
+            var linkColor = DentalConnectionPresentation.IndicatorColor(snapshot.Link, Green, Amber, Red);
             DrawFilledRect(new Rect(20f, 14f, 12f, 12f), linkColor);
             GUI.contentColor = TextPrimary;
-            GUI.Label(new Rect(40f, 7f, rect.width - 60f, 28f), link, m_HeaderTitleStyle);
+            GUI.Label(new Rect(40f, 7f, textWidth - 20f, 28f), link, m_HeaderTitleStyle);
 
             var context = HeaderContext(snapshot);
             var contextHeight = Mathf.Max(20f,
-                m_HeaderContextStyle.CalcHeight(new GUIContent(context), rect.width - 40f));
+                m_HeaderContextStyle.CalcHeight(new GUIContent(context), textWidth));
             GUI.contentColor = TextSecondary;
-            GUI.Label(new Rect(20f, 34f, rect.width - 40f, contextHeight), context, m_HeaderContextStyle);
+            GUI.Label(new Rect(20f, 34f, textWidth, contextHeight), context, m_HeaderContextStyle);
 
             var alert = HeaderAlert(evaluation);
             GUI.contentColor = evaluation.ShowAlarm ? Red : TextSecondary;
-            GUI.Label(new Rect(20f, 34f + contextHeight, rect.width - 40f,
+            GUI.Label(new Rect(20f, 34f + contextHeight, textWidth,
                 Mathf.Max(18f, rect.height - 34f - contextHeight - 6f)), alert, m_HeaderAlarmStyle);
             GUI.contentColor = TextPrimary;
+
+            var oldBackground = GUI.backgroundColor;
+            GUI.backgroundColor = new Color(0.65f, 0.32f, 0.34f, 1f);
+            if (GUI.Button(exitButton, "退出软件", m_ButtonStyle))
+                XREALPlugin.QuitApplication();
+            GUI.backgroundColor = oldBackground;
         }
 
         static string HeaderContext(DentalNavigationSnapshot snapshot)
@@ -635,13 +645,15 @@ namespace Unity.XR.XREAL.Samples
             DrawSingleButton(page.ControlRows[3],
                 m_Owner != null && m_Owner.LocalRgbPreviewVisible ? "关闭本地 RGB 预览" : "打开本地 RGB 预览",
                 () => m_Owner?.ToggleLocalRgbPreview(),
-                m_Owner != null && m_Owner.HasLocalRgbPreview);
+                RgbFeaturePolicy.Enabled && m_Owner != null && m_Owner.HasLocalRgbPreview,
+                RgbFeaturePolicy.Enabled ? "RGB 预览不可用" : RgbFeaturePolicy.DisabledMessage);
             if (HasArea(page.ControlRows[4]))
             {
                 DrawSingleButton(page.ControlRows[4],
                     m_Owner != null && m_Owner.GestureRecognitionEnabled ? "关闭离线手势识别" : "开启离线手势识别",
                     () => m_Owner?.ToggleGestureRecognition(),
-                    m_Owner != null);
+                    RgbFeaturePolicy.Enabled && m_Owner != null,
+                    RgbFeaturePolicy.Enabled ? "手势识别不可用" : RgbFeaturePolicy.DisabledMessage);
             }
 
             if (HasArea(page.NavigationAndMediaControls))
@@ -797,7 +809,7 @@ namespace Unity.XR.XREAL.Samples
             var detail = m_RobotDisplay != null
                 ? UserFacingStatus(m_RobotDisplay.ConnectionStatus)
                 : "连接服务不可用";
-            return $"{LinkPhrase(snapshot, DentalNavigationState.Instance != null ? DentalNavigationState.Instance.LastEvaluation : default)}\n当前地址：{endpoint}\n{detail}";
+            return $"{DentalConnectionPresentation.Label(snapshot.Link)}\n当前地址：{endpoint}\n{detail}";
         }
 
         static string UserFacingStatus(string status)
@@ -807,7 +819,7 @@ namespace Unity.XR.XREAL.Samples
             if (status.IndexOf("PlatformNotSupportedException", System.StringComparison.OrdinalIgnoreCase) >= 0
                 || status.IndexOf("gRPC requires extra configuration", System.StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                return "当前运行环境无法建立 gRPC HTTP/2 连接；请在 Android 真机验证连接。";
+                return "gRPC HTTP/2 传输初始化失败；请检查应用是否包含当前平台的 HTTP/2 处理器及其原生依赖。";
             }
             return status.Trim();
         }
@@ -837,29 +849,6 @@ namespace Unity.XR.XREAL.Samples
                 ? second
                 : string.IsNullOrEmpty(second) ? first : first + "·" + second;
             return string.IsNullOrEmpty(direction) ? "方向居中" : prefix + direction + suffix;
-        }
-
-        static string LinkPhrase(DentalNavigationSnapshot snapshot, DentalHudEvaluation evaluation)
-        {
-            if (snapshot.Link == DentalLinkState.Connecting)
-                return "连接中";
-            if (snapshot.Link == DentalLinkState.Live
-                && !evaluation.DashNumbers
-                && evaluation.Overall != DentalMetricGrade.Stale)
-                return "已连接";
-            if (snapshot.Link == DentalLinkState.Live)
-                return "数据中断";
-            return "未连接";
-        }
-
-        static Color LinkColor(DentalNavigationSnapshot snapshot, DentalHudEvaluation evaluation)
-        {
-            if (snapshot.Link == DentalLinkState.Live && !evaluation.DashNumbers
-                && evaluation.Overall != DentalMetricGrade.Stale)
-                return Green;
-            if (snapshot.Link == DentalLinkState.Connecting || snapshot.Link == DentalLinkState.Live)
-                return Amber;
-            return Red;
         }
 
         static string OverallPhrase(DentalMetricGrade grade)

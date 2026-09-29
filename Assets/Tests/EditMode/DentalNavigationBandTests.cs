@@ -83,6 +83,105 @@ namespace DentalNavigation.Tests
             Assert.That(configuredOverrun.AlarmText, Does.Contain("0.6 mm"));
         }
 
+        [TestCase(0.25f, false, "导航数据延迟")]
+        [TestCase(0.75f, true, "导航数据中断")]
+        public void FrameAgingAndRecoveryKeepSessionConnectedWhileRetainingNavigationWarnings(
+            float age, bool hideNumbers, string warning)
+        {
+            Assert.That(m_State.ApplyThresholds(Thresholds(DentalThresholdBoundaryRule.UpperBoundsInclusive)), Is.True);
+            Assert.That(m_State.ApplyNavigationFrame(Frame(1, 0.1f, 0.1f, 4f)), Is.True);
+            var fresh = m_State.Capture(Time.realtimeSinceStartup);
+            AssertConnected(fresh);
+            Assert.That(m_Band.Evaluate(fresh).ShowAlarm, Is.False);
+
+            var aged = m_State.Capture(Time.realtimeSinceStartup + age);
+            var warningEvaluation = m_Band.Evaluate(aged);
+            AssertConnected(aged);
+            Assert.That(warningEvaluation.ShowAlarm, Is.True);
+            Assert.That(warningEvaluation.AlarmText, Is.EqualTo(warning));
+            Assert.That(warningEvaluation.DashNumbers, Is.EqualTo(hideNumbers));
+            Assert.That(aged.HideNumbers, Is.EqualTo(hideNumbers));
+
+            Assert.That(m_State.ApplyNavigationFrame(Frame(2, 0.1f, 0.1f, 4f)), Is.True);
+            var recovered = m_State.Capture(Time.realtimeSinceStartup);
+            var recoveredEvaluation = m_Band.Evaluate(recovered);
+            AssertConnected(recovered);
+            Assert.That(recoveredEvaluation.ShowAlarm, Is.False);
+            Assert.That(recoveredEvaluation.DashNumbers, Is.False);
+        }
+
+        [Test]
+        public void WaitingForFirstFrameKeepsConnectionAndShowsWaitingWarning()
+        {
+            var snapshot = m_State.Capture(Time.realtimeSinceStartup);
+            var evaluation = m_Band.Evaluate(snapshot);
+
+            AssertConnected(snapshot);
+            Assert.That(evaluation.ShowAlarm, Is.True);
+            Assert.That(evaluation.AlarmText, Is.EqualTo("等待导航数据"));
+            Assert.That(evaluation.DashNumbers, Is.True);
+        }
+
+        [Test]
+        public void InvalidTrackingFrameKeepsConnectionButPreservesItsWarningAndHidesNumbers()
+        {
+            var invalid = new DentalNavigationFrameData(
+                "session", 1, 1, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), false, "跟踪无效",
+                Vector3.zero, Vector3.forward, false, Matrix4x4.identity,
+                0, 0, 0, 0, 0, 0, 0, 10, 10,
+                true, true, true);
+            Assert.That(m_State.ApplyNavigationFrame(invalid), Is.True);
+            var snapshot = m_State.Capture(Time.realtimeSinceStartup);
+            var evaluation = m_Band.Evaluate(snapshot);
+
+            AssertConnected(snapshot);
+            Assert.That(evaluation.ShowAlarm, Is.True);
+            Assert.That(evaluation.AlarmText, Is.EqualTo("跟踪无效"));
+            Assert.That(evaluation.DashNumbers, Is.True);
+        }
+
+        [Test]
+        public void StoppedNavigationKeepsSessionConnectedAndShowsTheStopReason()
+        {
+            Assert.That(m_State.ApplyNavigationFrame(Frame(1, 0.1f, 0.1f, 4f)), Is.True);
+            m_State.NotifyNavigationStopped("导航已暂停");
+            var snapshot = m_State.Capture(Time.realtimeSinceStartup);
+            var evaluation = m_Band.Evaluate(snapshot);
+
+            AssertConnected(snapshot);
+            Assert.That(evaluation.ShowAlarm, Is.True);
+            Assert.That(evaluation.AlarmText, Is.EqualTo("导航已暂停"));
+            Assert.That(evaluation.DashNumbers, Is.True);
+        }
+
+        [Test]
+        public void ActualConnectionEventsChangeIndicatorAndKeepNumbersHidden()
+        {
+            m_State.NotifyConnecting("127.0.0.1:50051");
+            var connecting = m_State.Capture(Time.realtimeSinceStartup);
+            Assert.That(DentalConnectionPresentation.Label(connecting.Link), Is.EqualTo("连接中"));
+            Assert.That(DentalConnectionPresentation.IndicatorColor(connecting.Link, Color.green, Color.yellow, Color.red),
+                Is.EqualTo(Color.yellow));
+            Assert.That(m_Band.Evaluate(connecting).DashNumbers, Is.True);
+
+            m_State.NotifyDisconnected("数据流已关闭");
+            var disconnected = m_State.Capture(Time.realtimeSinceStartup);
+            Assert.That(DentalConnectionPresentation.Label(disconnected.Link), Is.EqualTo("未连接"));
+            Assert.That(DentalConnectionPresentation.IndicatorColor(disconnected.Link, Color.green, Color.yellow, Color.red),
+                Is.EqualTo(Color.red));
+            var evaluation = m_Band.Evaluate(disconnected);
+            Assert.That(evaluation.AlarmText, Is.EqualTo("未连接导航软件"));
+            Assert.That(evaluation.DashNumbers, Is.True);
+        }
+
+        static void AssertConnected(DentalNavigationSnapshot snapshot)
+        {
+            Assert.That(snapshot.Link, Is.EqualTo(DentalLinkState.Live));
+            Assert.That(DentalConnectionPresentation.Label(snapshot.Link), Is.EqualTo("已连接"));
+            Assert.That(DentalConnectionPresentation.IndicatorColor(snapshot.Link, Color.green, Color.yellow, Color.red),
+                Is.EqualTo(Color.green));
+        }
+
         static DentalNavigationContext Context()
         {
             return new DentalNavigationContext(

@@ -103,6 +103,9 @@ namespace DentalNavigation.Tests
             Assert.That(layout.SafeAreaTopLeftPixels, Is.EqualTo(new Vector2(24f, 80f)));
             Assert.That(layout.VisibleSafeAreaPixels, Is.EqualTo(new Rect(24f, 80f, 1032f, 2240f)));
             AssertPhysicalRectIsContained(layout, layout.TopStatusBar);
+            AssertPhysicalRectIsContained(layout, layout.ExitButton);
+            Assert.That(layout.ExitButton.yMax, Is.LessThanOrEqualTo(layout.TopStatusBar.yMax));
+            AssertNoPositiveOverlap(layout.ExitButton, layout.ContentViewport);
             AssertPhysicalRectIsContained(layout, layout.ContentViewport);
             AssertPhysicalRectIsContained(layout, layout.BottomTabBar);
             Assert.That(layout.TabButtons, Has.Length.EqualTo(3));
@@ -140,6 +143,7 @@ namespace DentalNavigation.Tests
             var layout = Layout(1080f, 2400f, true);
 
             AssertMinimumTouchHeight(layout.TabButtons);
+            AssertMinimumTouchHeight(new[] { layout.ExitButton });
             AssertMinimumTouchHeight(layout.Monitor.TouchTargets);
             AssertMinimumTouchHeight(layout.Connection.TouchTargets);
             AssertMinimumTouchHeight(layout.Debug.TouchTargets);
