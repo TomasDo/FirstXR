@@ -1,0 +1,23 @@
+{
+    "name": "DentalNavigation.Transport.EditModeTests",
+    "references": [
+        "Unity.XR.XREAL.Samples.InteractionBasics"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Grpc.Core.Api.dll",
+        "Grpc.Net.Client.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false,
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

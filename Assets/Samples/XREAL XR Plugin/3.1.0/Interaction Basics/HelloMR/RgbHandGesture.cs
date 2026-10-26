@@ -1,0 +1,82 @@
+using System;
+
+namespace Unity.XR.XREAL.Samples
+{
+    /// <summary>Gestures recognized from offline hand landmarks.</summary>
+    public enum RgbHandGesture
+    {
+        None = 0,
+        OpenPalm = 1,
+        Fist = 2,
+        Pinch = 3,
+        Ok = 4,
+        TwoFinger = 5,
+    }
+
+    public static class RgbHandGestureNames
+    {
+        public static string ToDisplayName(RgbHandGesture gesture)
+        {
+            switch (gesture)
+            {
+                case RgbHandGesture.OpenPalm:
+                    return "Open palm";
+                case RgbHandGesture.Fist:
+                    return "Fist";
+                case RgbHandGesture.Pinch:
+                    return "Pinch";
+                case RgbHandGesture.Ok:
+                    return "OK";
+                case RgbHandGesture.TwoFinger:
+                    return "Index and middle fingers extended";
+                default:
+                    return "None";
+            }
+        }
+    }
+
+    /// <summary>
+    /// Hysteresis memory for the next frame. The analyzer itself stores nothing;
+    /// callers pass the latch returned on the previous observation.
+    /// </summary>
+    public struct RgbHandGestureLatch
+    {
+        public bool PinchLatched;
+        public byte ExtendedBits;
+        public byte CurledBits;
+    }
+
+    public struct RgbHandGestureObservation
+    {
+        public RgbHandGesture Gesture;
+        public int DefectCount;
+        public int PeakCount;
+        public float Compactness;
+        public float AreaRatio;
+        public float PeakSeparation;
+        public bool HasHole;
+        public bool HandDetected;
+        public UnityEngine.Vector2 PalmPosition;
+        public float Confidence;
+        public long SourceSequence;
+        public double ObservedAtSeconds;
+        public RgbHandGestureLatch Latch;
+
+        public static RgbHandGestureObservation None => new RgbHandGestureObservation
+        {
+            Gesture = RgbHandGesture.None,
+        };
+    }
+
+    public sealed class RgbHandGestureChangedEventArgs : EventArgs
+    {
+        public RgbHandGestureChangedEventArgs(RgbHandGesture previous, RgbHandGesture current)
+        {
+            Previous = previous;
+            Current = current;
+        }
+
+        public RgbHandGesture Previous { get; }
+        public RgbHandGesture Current { get; }
+    }
+}

@@ -1,0 +1,22 @@
+{
+    "name": "Unity.XR.XREAL.Samples.InteractionBasics",
+    "rootNamespace": "",
+    "references": [
+        "Unity.XR.XREAL",
+        "Unity.XR.CoreUtils",
+        "Unity.XR.Interaction.Toolkit",
+        "Unity.TextMeshPro",
+        "Unity.UGUI",
+        "Unity.InputSystem",
+        "Cysharp.Net.Http.YetAnotherHttpHandler"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
